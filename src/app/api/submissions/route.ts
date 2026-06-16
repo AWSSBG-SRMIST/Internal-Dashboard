@@ -32,10 +32,11 @@ export async function GET(req: NextRequest) {
     }
 
     const result = await db.send(new ScanCommand({ TableName: TABLE.SUBMISSIONS }));
-    let subs = result.Items || [];
+    const subs = result.Items || [];
     subs.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
     return NextResponse.json({ success: true, data: subs });
   } catch (error) {
+    console.error('Get submissions error:', error);
     return NextResponse.json({ error: 'Failed to fetch submissions' }, { status: 500 });
   }
 }

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getDomainColor, timeAgo } from '@/lib/utils';
+import { getDomainColor, getSubdomainColor, getCohortTypeColor, timeAgo } from '@/lib/utils';
 import { DOMAIN_SUBDOMAINS } from '@/types';
 import type { Cohort, Domain } from '@/types';
 
@@ -21,8 +21,8 @@ function CohortCard({ cohort, canManage, onDelete }: { cohort: Cohort; canManage
           <div>
             <h3 className="font-semibold text-slate-100">{cohort.name}</h3>
             <div className="flex flex-wrap gap-2 mt-2">
-              <Badge variant="outline" className="text-xs">{cohort.type}</Badge>
-              {cohort.subdomain && <Badge variant="outline" className="text-xs">{cohort.subdomain}</Badge>}
+              <Badge className={`${getCohortTypeColor(cohort.type)} text-xs`}>{cohort.type}</Badge>
+              {cohort.subdomain && <Badge className={`${getSubdomainColor(cohort.subdomain)} text-xs`}>{cohort.subdomain}</Badge>}
             </div>
           </div>
           <div className="flex items-center gap-2">

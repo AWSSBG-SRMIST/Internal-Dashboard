@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { db, TABLE, GetCommand, PutCommand, DeleteCommand, QueryCommand } from './dynamodb';
+import { db, TABLE, GetCommand, PutCommand, DeleteCommand } from './dynamodb';
 import type { SessionUser } from '@/types';
 
 const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days in seconds

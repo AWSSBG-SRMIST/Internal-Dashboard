@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: enriched });
   } catch (error) {
+    console.error('Get cohorts error:', error);
     return NextResponse.json({ error: 'Failed to fetch cohorts' }, { status: 500 });
   }
 }
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
     await logAction(user, 'CREATE_COHORT', 'COHORT', cohortId, `Created cohort: ${name}`);
     return NextResponse.json({ success: true, data: cohort });
   } catch (error) {
+    console.error('Create cohort error:', error);
     return NextResponse.json({ error: 'Failed to create cohort' }, { status: 500 });
   }
 }

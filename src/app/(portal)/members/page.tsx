@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { getRoleColor, getDomainColor, getStarColor, formatRole } from '@/lib/utils';
+import { getRoleColor, getDomainColor, getSubdomainColor, getStarColor, formatRole } from '@/lib/utils';
 import { DOMAIN_SUBDOMAINS, ROLE_HIERARCHY } from '@/types';
 import type { Domain } from '@/types';
 import Link from 'next/link';
@@ -58,7 +58,7 @@ function MemberTable({ members, hideDomain, hideStars, hideSubdomain }: { member
               {!hideSubdomain && (
                 <td className="px-4 py-3 hidden lg:table-cell">
                   {member.subdomain
-                    ? <Badge variant="outline" style={{ fontSize: '11px' }}>{member.subdomain}</Badge>
+                    ? <Badge className={getSubdomainColor(member.subdomain)} style={{ fontSize: '11px' }}>{member.subdomain}</Badge>
                     : <span className="text-xs text-slate-600">—</span>
                   }
                 </td>

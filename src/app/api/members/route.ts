@@ -62,7 +62,6 @@ export async function POST(req: NextRequest) {
       personalEmail: body.personalEmail || '',
       phone: body.phone || '',
       whatsapp: body.whatsapp || '',
-      birthday: body.birthday || '',
       github: body.github || '',
       linkedin: body.linkedin || '',
       instagram: body.instagram || '',

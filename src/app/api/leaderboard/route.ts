@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     const ratingsMap = new Map(ratings.map((r: any) => [r.memberId, r]));
 
-    let leaderboard = members
+    const leaderboard = members
       .filter((m: any) => m.isActive)
       .filter((m: any) => m.role !== 'SBG_LEADER' && m.role !== 'SECRETARY') // Presidium doesn't participate in the star/rating system
       .filter((m: any) => !domain || m.domain === domain)
@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: leaderboard });
   } catch (error) {
+    console.error('Get leaderboard error:', error);
     return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });
   }
 }

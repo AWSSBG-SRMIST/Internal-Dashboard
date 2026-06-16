@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, TABLE, QueryCommand } from '@/lib/dynamodb';
-import { verifyOTP, deleteOTP, createSession, setSessionCookie, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { verifyOTP, deleteOTP, createSession, setSessionCookie } from '@/lib/auth';
 import type { SessionUser } from '@/types';
 
 export async function POST(req: NextRequest) {

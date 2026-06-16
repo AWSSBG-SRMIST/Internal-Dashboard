@@ -8,20 +8,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatDateTime, timeAgo } from '@/lib/utils';
 import type { AuditLog } from '@/types';
 
+// Every action gets its own unique color — no two actions share a swatch.
 const ACTION_COLORS: Record<string, string> = {
   CREATE_MEMBER: 'bg-green-500/20 text-green-300',
   UPDATE_MEMBER: 'bg-blue-500/20 text-blue-300',
   DEACTIVATE_MEMBER: 'bg-red-500/20 text-red-300',
   CREATE_TASK: 'bg-orange-500/20 text-orange-300',
   UPDATE_TASK: 'bg-yellow-500/20 text-yellow-300',
-  DELETE_TASK: 'bg-red-500/20 text-red-300',
+  DELETE_TASK: 'bg-rose-500/20 text-rose-300',
   SUBMIT_TASK: 'bg-purple-500/20 text-purple-300',
-  APPROVE_SUBMISSION: 'bg-green-500/20 text-green-300',
-  REJECT_SUBMISSION: 'bg-red-500/20 text-red-300',
-  CREATE_LINK: 'bg-blue-500/20 text-blue-300',
-  DELETE_LINK: 'bg-red-500/20 text-red-300',
+  APPROVE_SUBMISSION: 'bg-emerald-500/20 text-emerald-300',
+  REJECT_SUBMISSION: 'bg-pink-500/20 text-pink-300',
+  CREATE_LINK: 'bg-cyan-500/20 text-cyan-300',
+  DELETE_LINK: 'bg-amber-500/20 text-amber-300',
   CREATE_COHORT: 'bg-teal-500/20 text-teal-300',
-  SEED_MEMBERS: 'bg-orange-500/20 text-orange-300',
+  SEED_MEMBERS: 'bg-indigo-500/20 text-indigo-300',
   SETUP_TABLES: 'bg-slate-700 text-slate-300',
 };
 

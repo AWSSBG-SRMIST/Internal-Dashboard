@@ -39,7 +39,6 @@ export interface Member {
   personalEmail: string;
   phone: string;
   whatsapp: string;
-  birthday: string;
   github: string;
   linkedin: string;
   instagram: string;

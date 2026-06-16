@@ -17,6 +17,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ c
     await logAction(user, 'DELETE_COHORT', 'COHORT', cohortId, 'Deleted cohort');
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Delete cohort error:', error);
     return NextResponse.json({ error: 'Failed to delete cohort' }, { status: 500 });
   }
 }

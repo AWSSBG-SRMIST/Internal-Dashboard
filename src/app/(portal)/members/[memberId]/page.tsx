@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { getRoleColor, getDomainColor, formatDate, formatRole } from '@/lib/utils';
+import { getRoleColor, getDomainColor, getSubdomainColor, formatRole } from '@/lib/utils';
 import Link from 'next/link';
 import type { Member } from '@/types';
 
@@ -60,7 +60,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
               <div className="flex flex-wrap gap-2 mb-3">
                 <Badge className={getRoleColor(member.role)}>{formatRole(member.role, member.domain)}</Badge>
                 {member.domain && member.role !== 'DIRECTOR' && <Badge className={getDomainColor(member.domain)}>{member.domain}</Badge>}
-                {member.subdomain && <Badge variant="outline">{member.subdomain}</Badge>}
+                {member.subdomain && <Badge className={getSubdomainColor(member.subdomain)}>{member.subdomain}</Badge>}
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-2 text-slate-400">
@@ -121,7 +121,6 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
               { label: 'Section', value: member.section },
               { label: 'Personal Email', value: member.personalEmail },
               { label: 'WhatsApp', value: member.whatsapp },
-              { label: 'Birthday', value: member.birthday ? formatDate(member.birthday) : null },
               { label: 'Faculty Advisor', value: member.faName },
               { label: 'FA Email', value: member.faEmail },
               { label: 'FA Phone', value: member.faPhone },

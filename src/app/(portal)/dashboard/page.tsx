@@ -2,41 +2,23 @@ import { getCurrentUser } from '@/lib/auth';
 import { db, TABLE, ScanCommand, QueryCommand } from '@/lib/dynamodb';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckSquare, Users, Trophy, Link2, TrendingUp, Clock, Star } from 'lucide-react';
-import { formatDateTime, getRoleColor, getDomainColor, timeAgo, formatRole } from '@/lib/utils';
-import { isTaskVisible, isPresidium } from '@/lib/permissions';
+import { CheckSquare, Users, Link2, TrendingUp, Clock, Star } from 'lucide-react';
+import { formatDateTime, getRoleColor, getDomainColor, getSubdomainColor, getAssignmentTypeColor, getGreeting, timeAgo, formatRole } from '@/lib/utils';
+import { isTaskVisible } from '@/lib/permissions';
 import type { SessionUser } from '@/types';
 import Link from 'next/link';
 
-// Every count here is scoped to what the user is actually allowed to see —
-// subdomains must stay anonymous from each other, so no global numbers leak
-// to MANAGER/ASSOCIATE/BUILDER roles.
+// Builders are the bottom of the hierarchy, so their dashboard only shows
+// their own work. Everyone above them additionally oversees subordinates, so
+// their dashboard splits visible tasks into "mine" vs "my team's".
+function isMyTask(user: SessionUser, task: { assignmentType: string; assignedToId?: string | null; createdBy: string }) {
+  return (task.assignmentType === 'INDIVIDUAL' && task.assignedToId === user.memberId) ||
+    task.assignmentType === 'GENERAL' ||
+    task.createdBy === user.memberId;
+}
+
 async function getDashboardStats(user: SessionUser) {
   try {
-    let membersCount = 0;
-    if (isPresidium(user)) {
-      const r = await db.send(new ScanCommand({ TableName: TABLE.MEMBERS, Select: 'COUNT' }));
-      membersCount = r.Count || 0;
-    } else if (user.role === 'DIRECTOR') {
-      const r = await db.send(new ScanCommand({
-        TableName: TABLE.MEMBERS,
-        Select: 'COUNT',
-        FilterExpression: '#d = :domain',
-        ExpressionAttributeNames: { '#d': 'domain' },
-        ExpressionAttributeValues: { ':domain': user.domain },
-      }));
-      membersCount = r.Count || 0;
-    } else {
-      const r = await db.send(new ScanCommand({
-        TableName: TABLE.MEMBERS,
-        Select: 'COUNT',
-        FilterExpression: '#d = :domain AND subdomain = :subdomain',
-        ExpressionAttributeNames: { '#d': 'domain' },
-        ExpressionAttributeValues: { ':domain': user.domain, ':subdomain': user.subdomain },
-      }));
-      membersCount = r.Count || 0;
-    }
-
     const [tasksRes, cohortsRes, submissionsRes, linksRes] = await Promise.all([
       db.send(new ScanCommand({ TableName: TABLE.TASKS })),
       db.send(new ScanCommand({ TableName: TABLE.COHORTS })),
@@ -48,10 +30,13 @@ async function getDashboardStats(user: SessionUser) {
     const visibleTasks = (tasksRes.Items || []).filter((t: any) => isTaskVisible(user, t, cohortMap));
     const visibleTaskIds = new Set(visibleTasks.map((t: any) => t.taskId));
 
-    const openTasks = visibleTasks
+    const openTasksAll = visibleTasks
       .filter((t: any) => t.status === 'OPEN')
-      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const isBuilder = user.role === 'BUILDER';
+    const myTasks = (isBuilder ? openTasksAll : openTasksAll.filter((t: any) => isMyTask(user, t))).slice(0, 5);
+    const teamTasks = isBuilder ? [] : openTasksAll.filter((t: any) => !isMyTask(user, t)).slice(0, 5);
 
     const visibleSubmissionsCount = (submissionsRes.Items || []).filter((s: any) => visibleTaskIds.has(s.taskId)).length;
 
@@ -65,15 +50,15 @@ async function getDashboardStats(user: SessionUser) {
     }));
 
     return {
-      totalMembers: membersCount,
       totalTasks: visibleTasks.length,
       totalSubmissions: visibleSubmissionsCount,
       totalLinks: linksRes.Count || 0,
-      recentTasks: openTasks,
+      myTasks,
+      teamTasks,
       myRecentSubmissions: mySubmissions.Items || [],
     };
   } catch (e) {
-    return { totalMembers: 0, totalTasks: 0, totalSubmissions: 0, totalLinks: 0, recentTasks: [], myRecentSubmissions: [] };
+    return { totalTasks: 0, totalSubmissions: 0, totalLinks: 0, myTasks: [], teamTasks: [], myRecentSubmissions: [] };
   }
 }
 
@@ -84,18 +69,20 @@ export default async function DashboardPage() {
   const stats = await getDashboardStats(user);
 
   const statCards = [
-    { label: 'Total Members', value: stats.totalMembers, icon: <Users size={20} />, color: 'text-blue-400', bg: 'bg-blue-500/20', href: '/members' },
     { label: 'Active Tasks', value: stats.totalTasks, icon: <CheckSquare size={20} />, color: 'text-orange-400', bg: 'bg-orange-500/20', href: '/tasks' },
     { label: 'Submissions', value: stats.totalSubmissions, icon: <TrendingUp size={20} />, color: 'text-green-400', bg: 'bg-green-500/20', href: '/tasks' },
     { label: 'Short Links', value: stats.totalLinks, icon: <Link2 size={20} />, color: 'text-purple-400', bg: 'bg-purple-500/20', href: '/links' },
   ];
+
+  const isBuilder = user.role === 'BUILDER';
+  const firstName = user.name.split(' ')[0];
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold text-slate-100">
-          Welcome back, {user.name.split(' ')[0]} 👋
+          {getGreeting()}, {firstName} 👋
         </h1>
         <p className="text-slate-400 text-sm mt-1">
           Here&apos;s what&apos;s happening in the AWSSBG dashboard
@@ -103,7 +90,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {statCards.map(card => (
           <Link href={card.href} key={card.label}>
             <div className="stats-card hover:border-slate-700 transition-all cursor-pointer group">
@@ -121,24 +108,24 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Tasks */}
+      <div className={isBuilder ? 'grid lg:grid-cols-2 gap-6' : 'grid lg:grid-cols-3 gap-6'}>
+        {/* My Tasks */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Open Tasks</CardTitle>
+              <CardTitle className="text-base">My Tasks</CardTitle>
               <Link href="/tasks" className="text-xs text-orange-500 hover:text-orange-400">View all →</Link>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {stats.recentTasks.length === 0 ? (
+            {stats.myTasks.length === 0 ? (
               <div className="text-center py-8 text-slate-500">
                 <CheckSquare size={32} className="mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No open tasks right now</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {stats.recentTasks.map((task: any) => (
+                {stats.myTasks.map((task: any) => (
                   <Link href={`/tasks/${task.taskId}`} key={task.taskId}>
                     <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800 transition-colors border border-slate-800">
                       <div className="w-2 h-2 rounded-full bg-orange-400 mt-1.5 flex-shrink-0" />
@@ -151,7 +138,7 @@ export default async function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="secondary" className="text-xs flex-shrink-0">
+                      <Badge className={`${getAssignmentTypeColor(task.assignmentType)} text-xs flex-shrink-0`}>
                         {task.assignmentType}
                       </Badge>
                     </div>
@@ -161,6 +148,48 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Team Tasks — tasks of those below this user in the hierarchy */}
+        {!isBuilder && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Team Tasks</CardTitle>
+                <Link href="/tasks" className="text-xs text-orange-500 hover:text-orange-400">View all →</Link>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {stats.teamTasks.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <Users size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No team tasks right now</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {stats.teamTasks.map((task: any) => (
+                    <Link href={`/tasks/${task.taskId}`} key={task.taskId}>
+                      <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800 transition-colors border border-slate-800">
+                        <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-100 truncate">{task.title}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Clock size={12} className="text-slate-500" />
+                            <p className="text-xs text-slate-500">
+                              Due {formatDateTime(task.deadline)}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">
+                          {task.assignmentType}
+                        </Badge>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* My Recent Submissions */}
         <Card>
@@ -230,7 +259,7 @@ export default async function DashboardPage() {
             {user.subdomain && (
               <div>
                 <p className="text-xs text-slate-500 mb-1">Subdomain</p>
-                <Badge variant="outline">{user.subdomain}</Badge>
+                <Badge className={getSubdomainColor(user.subdomain)}>{user.subdomain}</Badge>
               </div>
             )}
             <div>

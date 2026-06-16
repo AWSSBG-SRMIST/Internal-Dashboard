@@ -3,7 +3,7 @@ import { db, TABLE, GetCommand, QueryCommand } from '@/lib/dynamodb';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { getRoleColor, getDomainColor, getStarColor, formatDate, formatDateTime, formatRole } from '@/lib/utils';
+import { getRoleColor, getDomainColor, getSubdomainColor, getStarColor, formatDate, formatDateTime, formatRole } from '@/lib/utils';
 import { getSubmissionTimingLabel } from '@/lib/ratings';
 import { isPresidium } from '@/lib/permissions';
 import { Mail } from 'lucide-react';
@@ -47,7 +47,7 @@ export default async function ProfilePage() {
               <div className="flex flex-wrap gap-2 mt-2">
                 <Badge className={getRoleColor(user.role)}>{formatRole(user.role, user.domain)}</Badge>
                 {user.domain && user.role !== 'DIRECTOR' && <Badge className={getDomainColor(user.domain)}>{user.domain}</Badge>}
-                {user.subdomain && <Badge variant="outline">{user.subdomain}</Badge>}
+                {user.subdomain && <Badge className={getSubdomainColor(user.subdomain)}>{user.subdomain}</Badge>}
               </div>
               <div className="flex items-center gap-2 mt-3 text-sm text-slate-400">
                 <Mail size={14} className="text-slate-500" />
@@ -75,7 +75,6 @@ export default async function ProfilePage() {
               {member.regNo && <div className="flex justify-between"><span className="text-slate-400">Reg. No.</span><span className="font-medium text-slate-200">{member.regNo}</span></div>}
               {member.department && <div className="flex justify-between"><span className="text-slate-400">Department</span><span className="font-medium text-slate-200">{member.department}</span></div>}
               {member.builderId && <div className="flex justify-between"><span className="text-slate-400">Builder ID</span><span className="font-medium text-slate-200">{member.builderId}</span></div>}
-              {member.birthday && <div className="flex justify-between"><span className="text-slate-400">Birthday</span><span className="font-medium text-slate-200">{formatDate(member.birthday)}</span></div>}
               {member.joinedAt && <div className="flex justify-between"><span className="text-slate-400">Joined</span><span className="font-medium text-slate-200">{formatDate(member.joinedAt)}</span></div>}
             </CardContent>
           </Card>

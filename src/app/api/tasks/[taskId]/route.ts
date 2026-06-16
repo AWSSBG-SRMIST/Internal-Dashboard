@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db, TABLE, GetCommand, UpdateCommand, DeleteCommand, QueryCommand } from '@/lib/dynamodb';
 import { logAction } from '@/lib/audit';
-import { isPresidium, canCreateTask } from '@/lib/permissions';
+import { isPresidium, canCreateTask, isTaskVisible, canSubmitTask } from '@/lib/permissions';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   const user = await getCurrentUser();
@@ -23,6 +23,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
 
     if (!taskResult.Item) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
 
+    let cohortMap = new Map<string, any>();
+    if (taskResult.Item.assignmentType === 'COHORT' && taskResult.Item.assignedToId) {
+      const cohortResult = await db.send(new GetCommand({ TableName: TABLE.COHORTS, Key: { cohortId: taskResult.Item.assignedToId } }));
+      if (cohortResult.Item) cohortMap.set(taskResult.Item.assignedToId, cohortResult.Item);
+    }
+
+    if (!isTaskVisible(user, taskResult.Item as any, cohortMap)) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
     // Check if user has already submitted
     const submissions = submissionsResult.Items || [];
     const mySubmission = submissions.find((s: any) => s.memberId === user.memberId);
@@ -30,6 +40,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
     // For non-admins, only show their own submission unless they are a reviewer
     const canReview = isPresidium(user) || user.role === 'DIRECTOR' || user.role === 'MANAGER';
     const visibleSubmissions = canReview ? submissions : submissions.filter((s: any) => s.memberId === user.memberId);
+    const canSubmit = taskResult.Item.status === 'OPEN' && !mySubmission && canSubmitTask(user, taskResult.Item as any, cohortMap);
+    const canDelete = isPresidium(user) || taskResult.Item.createdBy === user.memberId;
 
     return NextResponse.json({
       success: true,
@@ -38,9 +50,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
         submissions: visibleSubmissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()),
         mySubmission: mySubmission || null,
         canReview,
+        canSubmit,
+        canDelete,
       },
     });
   } catch (error) {
+    console.error('Get task error:', error);
     return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
   }
 }
@@ -72,6 +87,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ task
     await logAction(user, 'UPDATE_TASK', 'TASK', taskId, `Updated task: ${title}`);
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Update task error:', error);
     return NextResponse.json({ error: 'Failed to update task' }, { status: 500 });
   }
 }
@@ -93,6 +109,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ t
     await logAction(user, 'DELETE_TASK', 'TASK', taskId, `Deleted task: ${task.Item.title}`);
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Delete task error:', error);
     return NextResponse.json({ error: 'Failed to delete task' }, { status: 500 });
   }
 }

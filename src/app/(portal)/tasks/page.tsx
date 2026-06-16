@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatDateTime, isDeadlinePassed } from '@/lib/utils';
+import { formatDateTime, isDeadlinePassed, getAssignmentTypeColor, getDomainColor } from '@/lib/utils';
 import Link from 'next/link';
 import type { Task } from '@/types';
 
@@ -26,8 +26,8 @@ function TaskCard({ task }: { task: Task }) {
               <Badge variant={task.status === 'OPEN' ? (overdue ? 'destructive' : 'default') : 'secondary'} className="text-xs">
                 {task.status === 'OPEN' ? (overdue ? 'Overdue' : 'Open') : 'Closed'}
               </Badge>
-              <Badge variant="outline" className="text-xs">{task.assignmentType}</Badge>
-              {task.domain && <Badge variant="secondary" className="text-xs">{task.domain}</Badge>}
+              <Badge className={`${getAssignmentTypeColor(task.assignmentType)} text-xs`}>{task.assignmentType}</Badge>
+              {task.domain && <Badge className={`${getDomainColor(task.domain)} text-xs`}>{task.domain}</Badge>}
             </div>
             <h3 className="font-semibold text-slate-100 truncate">{task.title}</h3>
             <p className="text-sm text-slate-400 mt-1 line-clamp-2">{task.description}</p>

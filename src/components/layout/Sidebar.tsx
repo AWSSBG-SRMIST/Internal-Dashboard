@@ -22,7 +22,7 @@ const navItems: NavItem[] = [
   { label: 'Tasks', href: '/tasks', icon: <CheckSquare size={18} /> },
   { label: 'Members', href: '/members', icon: <Users size={18} /> },
   { label: 'Cohorts', href: '/cohorts', icon: <Layers size={18} />, roles: ['SBG_LEADER', 'SECRETARY', 'DIRECTOR', 'MANAGER'] },
-  { label: 'Link Shortener', href: '/links', icon: <Link2 size={18} /> },
+  { label: 'Link Shortener', href: '/links', icon: <Link2 size={18} />, roles: ['SBG_LEADER', 'SECRETARY', 'DIRECTOR', 'MANAGER', 'ASSOCIATE'] },
   { label: 'Leaderboard', href: '/leaderboard', icon: <Trophy size={18} /> },
   { label: 'Analytics', href: '/analytics', icon: <BarChart3 size={18} />, roles: ['SBG_LEADER', 'SECRETARY', 'DIRECTOR'] },
   { label: 'Audit Logs', href: '/audit-logs', icon: <FileText size={18} />, roles: ['SBG_LEADER', 'SECRETARY'] },
@@ -129,7 +129,7 @@ export function Sidebar({ user }: SidebarProps) {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-slate-900 h-screen sticky top-0 flex-shrink-0">
+      <aside className="hidden lg:flex flex-col w-64 bg-slate-900 h-screen flex-shrink-0">
         <SidebarContent />
       </aside>
     </>

@@ -4,14 +4,14 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Clock, Link2, Plus, X, Loader2,
-  Check, XCircle, Star, ExternalLink, Calendar, User
+  Check, XCircle, Star, ExternalLink, Calendar, User, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDateTime, timeAgo, isDeadlinePassed } from '@/lib/utils';
+import { formatDateTime, timeAgo, isDeadlinePassed, getAssignmentTypeColor, getDomainColor, getSubdomainColor } from '@/lib/utils';
 import { getSubmissionTimingLabel } from '@/lib/ratings';
 import Link from 'next/link';
 import type { Task, Submission } from '@/types';
@@ -21,6 +21,8 @@ interface TaskDetailData {
   submissions: Submission[];
   mySubmission: Submission | null;
   canReview: boolean;
+  canSubmit: boolean;
+  canDelete: boolean;
 }
 
 export default function TaskDetailPage({ params }: { params: Promise<{ taskId: string }> }) {
@@ -29,6 +31,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
   const [data, setData] = useState<TaskDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [links, setLinks] = useState<string[]>(['']);
@@ -94,6 +97,19 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
     if ((await res.json()).success) { toast.success('Task closed'); fetchTask(); }
   }
 
+  async function deleteTask() {
+    if (!confirm('Delete this task permanently? All submissions for it will remain orphaned. This cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+      const d = await res.json();
+      if (!d.success) { toast.error(d.error || 'Failed to delete task'); return; }
+      toast.success('Task deleted');
+      router.push('/tasks');
+    } catch { toast.error('Failed to delete task'); }
+    finally { setDeleting(false); }
+  }
+
   if (loading) return (
     <div className="flex justify-center py-16">
       <Loader2 size={32} className="animate-spin text-orange-500" />
@@ -101,9 +117,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
   );
   if (!data) return null;
 
-  const { task, submissions, mySubmission, canReview } = data;
+  const { task, submissions, mySubmission, canReview, canSubmit, canDelete } = data;
   const overdue = isDeadlinePassed(task.deadline);
-  const canSubmit = task.status === 'OPEN' && !mySubmission;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn">
@@ -117,9 +132,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
             <Badge variant={task.status === 'OPEN' ? (overdue ? 'destructive' : 'default') : 'secondary'}>
               {task.status === 'OPEN' ? (overdue ? 'Overdue' : 'Open') : 'Closed'}
             </Badge>
-            <Badge variant="outline">{task.assignmentType}</Badge>
-            {task.domain && <Badge variant="secondary">{task.domain}</Badge>}
-            {task.subdomain && <Badge variant="outline">{task.subdomain}</Badge>}
+            <Badge className={getAssignmentTypeColor(task.assignmentType)}>{task.assignmentType}</Badge>
+            {task.domain && <Badge className={getDomainColor(task.domain)}>{task.domain}</Badge>}
+            {task.subdomain && <Badge className={getSubdomainColor(task.subdomain)}>{task.subdomain}</Badge>}
           </div>
           <h1 className="text-2xl font-bold text-slate-100">{task.title}</h1>
           <div className="flex flex-wrap gap-4 mt-2 text-sm text-slate-400">
@@ -134,9 +149,17 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
             </span>
           </div>
         </div>
-        {canReview && task.status === 'OPEN' && (
-          <Button variant="outline" size="sm" onClick={closeTask}>Close Task</Button>
-        )}
+        <div className="flex gap-2">
+          {canReview && task.status === 'OPEN' && (
+            <Button variant="outline" size="sm" onClick={closeTask}>Close Task</Button>
+          )}
+          {canDelete && (
+            <Button variant="destructive" size="sm" onClick={deleteTask} disabled={deleting}>
+              {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              Delete
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Description */}

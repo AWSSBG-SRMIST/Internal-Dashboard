@@ -32,6 +32,17 @@ export function timeAgo(date: string | Date) {
   return 'just now';
 }
 
+export function getGreeting(): string {
+  const hour = parseInt(
+    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Asia/Kolkata' }).format(new Date()),
+    10
+  );
+  if (hour >= 5 && hour < 12) return 'Good Morning';
+  if (hour >= 12 && hour < 17) return 'Good Afternoon';
+  if (hour >= 17 && hour < 21) return 'Good Evening';
+  return 'Hello Night Owl';
+}
+
 export function generateOTP(): string {
   const arr = new Uint32Array(1);
   crypto.getRandomValues(arr);
@@ -50,8 +61,9 @@ export function formatRole(role: string, domain?: string | null): string {
   return labels[role] || role.replace('_', ' ');
 }
 
-// Kept deliberately distinct from getDomainColor's palette (blue/green/pink/orange)
-// so a Director's Role badge never matches their Domain badge.
+// Role, Domain, and Subdomain badges are often shown side by side on the same
+// member, so each function below draws from its own disjoint hue set —
+// no role color ever equals a domain color or a subdomain color.
 export function getRoleColor(role: string): string {
   const colors: Record<string, string> = {
     SBG_LEADER: 'bg-red-500/20 text-red-300',
@@ -72,6 +84,45 @@ export function getDomainColor(domain: string | null): string {
     General: 'bg-orange-500/20 text-orange-300',
   };
   return domain ? (colors[domain] || 'bg-slate-700 text-slate-300') : 'bg-slate-700 text-slate-300';
+}
+
+export function getSubdomainColor(subdomain: string | null): string {
+  const colors: Record<string, string> = {
+    'Software Development': 'bg-cyan-500/20 text-cyan-300',
+    'AI & Machine Learning': 'bg-violet-500/20 text-violet-300',
+    'Cloud & DevOps': 'bg-sky-500/20 text-sky-300',
+    'Events & Operations': 'bg-amber-500/20 text-amber-300',
+    'Sponsorship & Finance': 'bg-emerald-500/20 text-emerald-300',
+    'HR & Admin': 'bg-fuchsia-500/20 text-fuchsia-300',
+    'PR & Marketing': 'bg-lime-500/20 text-lime-300',
+    'Digital Design': 'bg-rose-500/20 text-rose-300',
+    'Media Production': 'bg-stone-500/20 text-stone-300',
+  };
+  return subdomain ? (colors[subdomain] || 'bg-slate-700 text-slate-300') : 'bg-slate-700 text-slate-300';
+}
+
+// Reuses hues from getRoleColor's palette — assignment type badges only ever
+// appear on task pages, which never render a Role badge, so there's no clash.
+export function getAssignmentTypeColor(type: string): string {
+  const colors: Record<string, string> = {
+    INDIVIDUAL: 'bg-indigo-500/20 text-indigo-300',
+    DOMAIN: 'bg-purple-500/20 text-purple-300',
+    SUBDOMAIN: 'bg-teal-500/20 text-teal-300',
+    COHORT: 'bg-yellow-500/20 text-yellow-300',
+    GENERAL: 'bg-slate-700 text-slate-300',
+  };
+  return colors[type] || 'bg-slate-700 text-slate-300';
+}
+
+// Cohort cards show type next to subdomain (getSubdomainColor's palette), so
+// these three stay outside that palette to avoid a same-card color clash.
+export function getCohortTypeColor(type: string): string {
+  const colors: Record<string, string> = {
+    SUBDOMAIN: 'bg-indigo-500/20 text-indigo-300',
+    CUSTOM: 'bg-purple-500/20 text-purple-300',
+    GENERAL: 'bg-slate-700 text-slate-300',
+  };
+  return colors[type] || 'bg-slate-700 text-slate-300';
 }
 
 export function getStarColor(stars: number): string {

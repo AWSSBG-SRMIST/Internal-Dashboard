@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: logs.slice(0, limit) });
   } catch (error) {
+    console.error('Get audit logs error:', error);
     return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
   }
 }

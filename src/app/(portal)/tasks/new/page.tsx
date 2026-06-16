@@ -11,19 +11,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { DOMAIN_SUBDOMAINS } from '@/types';
+import { canAssignToMember, canAssignToScope, canAssignToCohort } from '@/lib/permissions';
 import Link from 'next/link';
-import type { Member, Cohort } from '@/types';
+import type { Member, Cohort, Domain, SessionUser } from '@/types';
+
+const ALL_DOMAINS: Domain[] = ['Technical', 'Corporate', 'Creatives'];
+
+function allowedAssignmentTypes(me: SessionUser, assignableCohortCount: number): string[] {
+  return [
+    canAssignToScope(me, 'GENERAL') && 'GENERAL',
+    (me.role === 'SBG_LEADER' || me.role === 'SECRETARY' || me.role === 'DIRECTOR') && 'DOMAIN',
+    (me.role === 'SBG_LEADER' || me.role === 'SECRETARY' || me.role === 'DIRECTOR' || me.role === 'MANAGER') && 'SUBDOMAIN',
+    me.role !== 'BUILDER' && 'INDIVIDUAL',
+    assignableCohortCount > 0 && 'COHORT',
+  ].filter((v): v is string => Boolean(v));
+}
 
 export default function NewTaskPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [me, setMe] = useState<SessionUser | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [form, setForm] = useState({
     title: '',
     description: '',
     deadline: '',
-    assignmentType: 'GENERAL',
+    assignmentType: '',
     assignedToId: '',
     assignedToName: 'Everyone',
     domain: '',
@@ -31,12 +45,30 @@ export default function NewTaskPage() {
   });
 
   useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.success) setMe(d.data); });
     fetch('/api/members').then(r => r.json()).then(d => { if (d.success) setMembers(d.data); });
     fetch('/api/cohorts').then(r => r.json()).then(d => { if (d.success) setCohorts(d.data); });
   }, []);
 
-  const subdomains = form.domain && form.domain !== 'General'
-    ? DOMAIN_SUBDOMAINS[form.domain as keyof typeof DOMAIN_SUBDOMAINS] || []
+  const assignableMembers = me ? members.filter(m => canAssignToMember(me, m)) : [];
+  const assignableCohorts = me ? cohorts.filter(c => canAssignToCohort(me, c)) : [];
+  const availableTypes = me ? allowedAssignmentTypes(me, assignableCohorts.length) : [];
+
+  // Once we know who's logged in, default to the first assignment type they're
+  // actually allowed to use, instead of always defaulting to GENERAL.
+  useEffect(() => {
+    if (!me || form.assignmentType) return;
+    if (availableTypes.length > 0) setForm(f => ({ ...f, assignmentType: availableTypes[0] }));
+  }, [me, availableTypes, form.assignmentType]);
+
+  const allowedDomains = me && (form.assignmentType === 'DOMAIN' || form.assignmentType === 'SUBDOMAIN')
+    ? ALL_DOMAINS.filter(d => canAssignToScope(me, form.assignmentType as 'DOMAIN' | 'SUBDOMAIN', d))
+    : [];
+
+  const subdomains = me && form.assignmentType === 'SUBDOMAIN' && form.domain
+    ? (DOMAIN_SUBDOMAINS[form.domain as keyof typeof DOMAIN_SUBDOMAINS] || []).filter(
+        sd => canAssignToScope(me, 'SUBDOMAIN', form.domain as Domain, sd)
+      )
     : [];
 
   function handleDomainChange(domain: string) {
@@ -48,17 +80,17 @@ export default function NewTaskPage() {
     if (f.assignmentType === 'DOMAIN') return f.domain || 'All';
     if (f.assignmentType === 'SUBDOMAIN') return f.subdomain || f.domain || 'All';
     if (f.assignmentType === 'INDIVIDUAL' && f.assignedToId) {
-      return members.find(m => m.memberId === f.assignedToId)?.name || 'Unknown';
+      return assignableMembers.find(m => m.memberId === f.assignedToId)?.name || 'Unknown';
     }
     if (f.assignmentType === 'COHORT' && f.assignedToId) {
-      return cohorts.find(c => c.cohortId === f.assignedToId)?.name || 'Unknown Cohort';
+      return assignableCohorts.find(c => c.cohortId === f.assignedToId)?.name || 'Unknown Cohort';
     }
     return 'Everyone';
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim() || !form.description.trim() || !form.deadline) {
+    if (!form.title.trim() || !form.description.trim() || !form.deadline || !form.assignmentType) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -69,7 +101,7 @@ export default function NewTaskPage() {
       let domain = form.domain || null;
       let subdomain = form.subdomain || null;
       if (form.assignmentType === 'COHORT' && form.assignedToId) {
-        const cohort = cohorts.find(c => c.cohortId === form.assignedToId);
+        const cohort = assignableCohorts.find(c => c.cohortId === form.assignedToId);
         domain = cohort?.domain || null;
         subdomain = cohort?.subdomain || null;
       }
@@ -101,6 +133,23 @@ export default function NewTaskPage() {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   const minDateTime = now.toISOString().slice(0, 16);
+
+  if (!me) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 size={32} className="animate-spin text-orange-500" />
+      </div>
+    );
+  }
+
+  if (me.role === 'BUILDER' || availableTypes.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center text-slate-400">
+        <p>You are not authorized to create tasks.</p>
+        <Link href="/tasks" className="text-sm text-orange-500 hover:text-orange-400 mt-2 inline-block">Back to tasks →</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
@@ -160,14 +209,14 @@ export default function NewTaskPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Assignment Type *</Label>
-              <Select value={form.assignmentType} onValueChange={v => setForm(f => ({ ...f, assignmentType: v, assignedToId: '', assignedToName: getAssignedToName({ ...f, assignmentType: v }) }))}>
+              <Select value={form.assignmentType} onValueChange={v => setForm(f => ({ ...f, assignmentType: v, assignedToId: '', domain: '', subdomain: '', assignedToName: getAssignedToName({ ...f, assignmentType: v }) }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="GENERAL">General (Everyone)</SelectItem>
-                  <SelectItem value="DOMAIN">Domain-wide</SelectItem>
-                  <SelectItem value="SUBDOMAIN">Subdomain-wide</SelectItem>
-                  <SelectItem value="INDIVIDUAL">Individual Member</SelectItem>
-                  <SelectItem value="COHORT">Cohort</SelectItem>
+                  {availableTypes.includes('GENERAL') && <SelectItem value="GENERAL">General (Everyone)</SelectItem>}
+                  {availableTypes.includes('DOMAIN') && <SelectItem value="DOMAIN">Domain-wide</SelectItem>}
+                  {availableTypes.includes('SUBDOMAIN') && <SelectItem value="SUBDOMAIN">Subdomain-wide</SelectItem>}
+                  {availableTypes.includes('INDIVIDUAL') && <SelectItem value="INDIVIDUAL">Individual Member</SelectItem>}
+                  {availableTypes.includes('COHORT') && <SelectItem value="COHORT">Cohort</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -178,9 +227,7 @@ export default function NewTaskPage() {
                 <Select value={form.domain} onValueChange={handleDomainChange}>
                   <SelectTrigger><SelectValue placeholder="Select domain" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Technical">Technical</SelectItem>
-                    <SelectItem value="Corporate">Corporate</SelectItem>
-                    <SelectItem value="Creatives">Creatives</SelectItem>
+                    {allowedDomains.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -202,12 +249,12 @@ export default function NewTaskPage() {
               <div className="space-y-2">
                 <Label>Member *</Label>
                 <Select value={form.assignedToId} onValueChange={v => {
-                  const member = members.find(m => m.memberId === v);
+                  const member = assignableMembers.find(m => m.memberId === v);
                   setForm(f => ({ ...f, assignedToId: v, assignedToName: member?.name || '' }));
                 }}>
                   <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
                   <SelectContent>
-                    {members.map(m => (
+                    {assignableMembers.map(m => (
                       <SelectItem key={m.memberId} value={m.memberId}>
                         {m.name} ({m.role})
                       </SelectItem>
@@ -223,7 +270,7 @@ export default function NewTaskPage() {
                 <Select value={form.assignedToId} onValueChange={v => setForm(f => ({ ...f, assignedToId: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select cohort" /></SelectTrigger>
                   <SelectContent>
-                    {cohorts.map(c => (
+                    {assignableCohorts.map(c => (
                       <SelectItem key={c.cohortId} value={c.cohortId}>
                         {c.name} <span className="text-slate-400 text-xs">({c.type} · {c.memberCount ?? 0} members)</span>
                       </SelectItem>
@@ -243,8 +290,8 @@ export default function NewTaskPage() {
                   {form.assignmentType === 'GENERAL' ? 'Everyone' :
                    form.assignmentType === 'DOMAIN' ? `${form.domain || '?'} domain` :
                    form.assignmentType === 'SUBDOMAIN' ? `${form.subdomain || form.domain || '?'}` :
-                   form.assignmentType === 'COHORT' ? (form.assignedToId ? cohorts.find(c => c.cohortId === form.assignedToId)?.name || '?' : '?') :
-                   form.assignedToId ? members.find(m => m.memberId === form.assignedToId)?.name || '?' : '?'}
+                   form.assignmentType === 'COHORT' ? (form.assignedToId ? assignableCohorts.find(c => c.cohortId === form.assignedToId)?.name || '?' : '?') :
+                   form.assignedToId ? assignableMembers.find(m => m.memberId === form.assignedToId)?.name || '?' : '?'}
                 </Badge>
               </div>
             </div>
@@ -255,11 +302,11 @@ export default function NewTaskPage() {
         <Card className="bg-blue-500/10 border-blue-500/30">
           <CardContent className="p-4">
             <h3 className="text-sm font-semibold text-blue-300 mb-2">Rating System</h3>
-            <div className="grid grid-cols-2 gap-2 text-xs text-blue-400">
-              <div className="flex items-center gap-2"><span className="font-bold text-green-400">+3⭐</span> Submitted &gt;24h before deadline</div>
-              <div className="flex items-center gap-2"><span className="font-bold text-blue-400">+2⭐</span> Submitted within last 24h before</div>
-              <div className="flex items-center gap-2"><span className="font-bold text-yellow-400">+1⭐</span> Submitted within 24h after deadline</div>
-              <div className="flex items-center gap-2"><span className="font-bold text-red-400">-1⭐</span> Submitted more than 24h after</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-blue-400">
+              <div className="flex items-center gap-2 min-w-0"><span className="font-bold text-green-400 flex-shrink-0">+3⭐</span> <span className="min-w-0">Submitted &gt;24h before deadline</span></div>
+              <div className="flex items-center gap-2 min-w-0"><span className="font-bold text-blue-400 flex-shrink-0">+2⭐</span> <span className="min-w-0">Submitted within last 24h before</span></div>
+              <div className="flex items-center gap-2 min-w-0"><span className="font-bold text-yellow-400 flex-shrink-0">+1⭐</span> <span className="min-w-0">Submitted within 24h after deadline</span></div>
+              <div className="flex items-center gap-2 min-w-0"><span className="font-bold text-red-400 flex-shrink-0">-1⭐</span> <span className="min-w-0">Submitted more than 24h after</span></div>
             </div>
           </CardContent>
         </Card>

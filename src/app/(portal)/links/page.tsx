@@ -1,7 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { Link2, Plus, Copy, Trash2, ExternalLink, Loader2 } from 'lucide-react';
+import { Link2, Plus, Copy, Trash2, ExternalLink, Loader2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,16 +9,24 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { formatDateTime, timeAgo } from '@/lib/utils';
-import type { ShortLink } from '@/types';
+import type { ShortLink, SessionUser } from '@/types';
+
+type CodeStatus = 'idle' | 'checking' | 'available' | 'taken';
 
 export default function LinksPage() {
+  const [me, setMe] = useState<SessionUser | null>(null);
   const [links, setLinks] = useState<ShortLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ originalUrl: '', description: '', customCode: '' });
+  const [codeStatus, setCodeStatus] = useState<CodeStatus>('idle');
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { fetchLinks(); }, []);
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.success) setMe(d.data); });
+    fetchLinks();
+  }, []);
 
   async function fetchLinks() {
     setLoading(true);
@@ -30,8 +38,27 @@ export default function LinksPage() {
     finally { setLoading(false); }
   }
 
+  function onCustomCodeChange(value: string) {
+    const code = value.replace(/[^a-zA-Z0-9-_]/g, '');
+    setForm(f => ({ ...f, customCode: code }));
+
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    if (!code) { setCodeStatus('idle'); return; }
+
+    setCodeStatus('checking');
+    checkTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/links/${code}`);
+        setCodeStatus(res.ok ? 'taken' : 'available');
+      } catch {
+        setCodeStatus('idle');
+      }
+    }, 400);
+  }
+
   async function createLink(e: React.FormEvent) {
     e.preventDefault();
+    if (codeStatus === 'taken') { toast.error('That short code is already taken'); return; }
     setCreating(true);
     try {
       const res = await fetch('/api/links', {
@@ -44,6 +71,7 @@ export default function LinksPage() {
       toast.success('Short link created!');
       setShowCreate(false);
       setForm({ originalUrl: '', description: '', customCode: '' });
+      setCodeStatus('idle');
       fetchLinks();
     } catch { toast.error('Failed to create link'); }
     finally { setCreating(false); }
@@ -67,6 +95,22 @@ export default function LinksPage() {
   }
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+  if (!me) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 size={32} className="animate-spin text-orange-500" />
+      </div>
+    );
+  }
+
+  if (me.role === 'BUILDER') {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center text-slate-400">
+        <p>You are not authorized to use the Link Shortener.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -106,8 +150,8 @@ export default function LinksPage() {
                       className="text-xs text-slate-500 hover:text-orange-500 flex items-center gap-1 truncate">
                       {link.originalUrl}<ExternalLink size={10} />
                     </a>
-                    <p className="text-xs text-slate-500 mt-1">
-                      By {link.createdByName} · {timeAgo(link.createdAt)}
+                    <p className="text-xs text-slate-500 mt-1" title={formatDateTime(link.createdAt)}>
+                      Created by <span className="text-slate-400 font-medium">{link.createdByName}</span> on {formatDateTime(link.createdAt)} ({timeAgo(link.createdAt)})
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -145,13 +189,27 @@ export default function LinksPage() {
               <Label>Custom Code (optional)</Label>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-500 whitespace-nowrap">{appUrl}/s/</span>
-                <Input placeholder="my-link" value={form.customCode} onChange={e => setForm(f => ({ ...f, customCode: e.target.value.replace(/[^a-zA-Z0-9-_]/g, '') }))} />
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="my-link"
+                    value={form.customCode}
+                    onChange={e => onCustomCodeChange(e.target.value)}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                    {codeStatus === 'checking' && <Loader2 size={14} className="animate-spin text-slate-500" />}
+                    {codeStatus === 'available' && <Check size={14} className="text-green-400" />}
+                    {codeStatus === 'taken' && <X size={14} className="text-red-400" />}
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-slate-500">Leave blank for auto-generated code</p>
+              {codeStatus === 'taken' && <p className="text-xs text-red-400">That code is already taken — try another one.</p>}
+              {codeStatus === 'available' && <p className="text-xs text-green-400">Available!</p>}
+              {codeStatus === 'idle' && <p className="text-xs text-slate-500">Leave blank for auto-generated code</p>}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button type="submit" disabled={creating}>
+              <Button type="submit" disabled={creating || codeStatus === 'checking' || codeStatus === 'taken'}>
                 {creating ? <><Loader2 size={14} className="animate-spin" /> Creating...</> : 'Create Link'}
               </Button>
             </DialogFooter>

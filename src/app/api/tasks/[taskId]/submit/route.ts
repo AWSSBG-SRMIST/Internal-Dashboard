@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db, TABLE, GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@/lib/dynamodb';
 import { logAction } from '@/lib/audit';
-import { isUserInCohort, isPresidium } from '@/lib/permissions';
+import { canSubmitTask } from '@/lib/permissions';
 import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
@@ -16,12 +16,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tas
     if (!task.Item) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     if (task.Item.status === 'CLOSED') return NextResponse.json({ error: 'Task is closed' }, { status: 400 });
 
-    // Validate cohort membership for COHORT tasks
-    if (task.Item.assignmentType === 'COHORT' && !isPresidium(user)) {
+    // Validate the submitter is actually eligible for this task's assignment
+    // (INDIVIDUAL -> only the assignee, DOMAIN/SUBDOMAIN -> only matching scope,
+    // COHORT -> only cohort members, GENERAL -> everyone).
+    let cohortMap = new Map<string, any>();
+    if (task.Item.assignmentType === 'COHORT' && task.Item.assignedToId) {
       const cohortResult = await db.send(new GetCommand({ TableName: TABLE.COHORTS, Key: { cohortId: task.Item.assignedToId } }));
-      if (!cohortResult.Item || !isUserInCohort(user, cohortResult.Item as any)) {
-        return NextResponse.json({ error: 'You are not part of this cohort' }, { status: 403 });
-      }
+      if (cohortResult.Item) cohortMap.set(task.Item.assignedToId, cohortResult.Item);
+    }
+    if (!canSubmitTask(user, task.Item as any, cohortMap)) {
+      return NextResponse.json({ error: 'You are not eligible to submit to this task' }, { status: 403 });
     }
 
     // Check if already submitted

@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db, TABLE, ScanCommand, PutCommand } from '@/lib/dynamodb';
 import { logAction } from '@/lib/audit';
+import { canUseLinkShortener } from '@/lib/permissions';
 import { nanoid } from 'nanoid';
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!canUseLinkShortener(user)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
     const result = await db.send(new ScanCommand({ TableName: TABLE.LINKS }));
@@ -15,6 +17,7 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ success: true, data: links });
   } catch (error) {
+    console.error('Get links error:', error);
     return NextResponse.json({ error: 'Failed to fetch links' }, { status: 500 });
   }
 }
@@ -22,6 +25,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!canUseLinkShortener(user)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
     const { originalUrl, description, customCode } = await req.json();
