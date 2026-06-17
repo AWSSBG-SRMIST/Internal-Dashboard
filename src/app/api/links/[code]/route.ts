@@ -7,6 +7,7 @@ import { isPresidium, canUseLinkShortener } from '@/lib/permissions';
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!canUseLinkShortener(user)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { code } = await params;
   const result = await db.send(new GetCommand({ TableName: TABLE.LINKS, Key: { shortCode: code } }));

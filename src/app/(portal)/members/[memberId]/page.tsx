@@ -56,6 +56,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
   if (!member) return null;
 
   const initials = member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const isSafeUrl = (url?: string | null) => !!url && /^https?:\/\//i.test(url);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
@@ -92,7 +93,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
                     <span>{member.phone}</span>
                   </div>
                 )}
-                {member.github && (
+                {isSafeUrl(member.github) && (
                   <a href={member.github} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 text-slate-400 hover:text-orange-500">
                     <Code2 size={14} className="text-slate-500" />
@@ -100,7 +101,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
                     <ExternalLink size={11} />
                   </a>
                 )}
-                {member.linkedin && (
+                {isSafeUrl(member.linkedin) && (
                   <a href={member.linkedin} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 text-slate-400 hover:text-orange-500">
                     <Link2 size={14} className="text-slate-500" />
@@ -108,7 +109,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
                     <ExternalLink size={11} />
                   </a>
                 )}
-                {member.instagram && (
+                {isSafeUrl(member.instagram) && (
                   <a href={member.instagram} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 text-slate-400 hover:text-orange-500">
                     <Camera size={14} className="text-slate-500" />
@@ -116,7 +117,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
                     <ExternalLink size={11} />
                   </a>
                 )}
-                {member.builderId && (
+                {isSafeUrl(member.builderId) && (
                   <a href={member.builderId} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 text-slate-400 hover:text-orange-500">
                     <Award size={14} className="text-slate-500" />

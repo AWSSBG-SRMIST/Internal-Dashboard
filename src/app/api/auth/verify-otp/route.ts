@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, TABLE, QueryCommand } from '@/lib/dynamodb';
 import { verifyOTP, deleteOTP, createSession, setSessionCookie } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import type { SessionUser } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -8,6 +9,12 @@ export async function POST(req: NextRequest) {
     const { email, otp } = await req.json();
     if (!email || !otp) {
       return NextResponse.json({ error: 'Email and OTP are required' }, { status: 400 });
+    }
+
+    // Per-IP throttle on top of the per-email attempt lock in verifyOTP() —
+    // stops an attacker from parallelizing guesses across many email addresses.
+    if (!checkRateLimit(`verify-otp:${getClientIp(req)}`, 20, 10 * 60)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
     }
 
     const normalizedEmail = email.trim().toLowerCase();

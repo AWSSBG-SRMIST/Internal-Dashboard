@@ -357,19 +357,19 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
                 sub.reviewStatus === 'APPROVED' ? 'border-green-500/30 bg-green-500/5' :
                 sub.reviewStatus === 'REJECTED' ? 'border-red-500/30 bg-red-500/5' : 'border-slate-700'
               }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-orange-500/20 flex items-center justify-center text-xs font-bold text-orange-400">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="w-7 h-7 rounded-full bg-orange-500/20 flex items-center justify-center text-xs font-bold text-orange-400 flex-shrink-0">
                       {sub.memberName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-100">{sub.memberName}</p>
-                      <p className="text-xs text-slate-500">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-100 truncate">{sub.memberName}</p>
+                      <p className="text-xs text-slate-500 truncate">
                         {formatDateTime(sub.submittedAt)} · {getSubmissionTimingLabel(sub.submittedAt, task.deadline)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {sub.ratingAwarded != null && (
                       <span className={`text-xs font-bold ${sub.ratingAwarded > 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {sub.ratingAwarded > 0 ? '+' : ''}{sub.ratingAwarded}⭐

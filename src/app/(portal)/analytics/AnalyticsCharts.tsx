@@ -92,7 +92,7 @@ export default function AnalyticsCharts({ analytics }: { analytics: AnalyticsRes
             <div className="space-y-3">
               {roleStats.filter(r => r.count > 0).map((r, i) => (
                 <div key={r.role} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400 w-32 flex-shrink-0">{formatRole(r.role)}</span>
+                  <span className="text-xs text-slate-400 w-20 sm:w-32 flex-shrink-0 truncate">{formatRole(r.role)}</span>
                   <div className="flex-1 bg-slate-800 rounded-full h-2">
                     <div
                       className="h-2 rounded-full"

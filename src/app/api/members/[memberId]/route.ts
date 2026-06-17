@@ -40,6 +40,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
       ? ['name', 'role', 'domain', 'subdomain', 'department', 'phone', 'github', 'linkedin', 'meetup', 'builderId', 'personalEmail', 'isActive', 'clubId', 'regNo']
       : ['phone', 'github', 'linkedin', 'meetup', 'personalEmail'];
 
+    // URL fields are rendered back as <a href> client-side, so a non-http(s)
+    // scheme (e.g. javascript:) would execute in the viewer's session — reject
+    // anything that doesn't parse as a plain http/https URL before it's stored.
+    const urlFields = ['github', 'linkedin', 'meetup', 'builderId'];
+    for (const field of urlFields) {
+      if (body[field] === undefined || body[field] === '') continue;
+      try {
+        const parsed = new URL(body[field]);
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('bad protocol');
+      } catch {
+        return NextResponse.json({ error: `${field} must be a valid http or https URL` }, { status: 400 });
+      }
+    }
+    if (body.personalEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.personalEmail)) {
+      return NextResponse.json({ error: 'personalEmail must be a valid email address' }, { status: 400 });
+    }
+    if (body.phone && !/^[+\d][\d\s-]{6,19}$/.test(body.phone)) {
+      return NextResponse.json({ error: 'phone must be a valid phone number' }, { status: 400 });
+    }
+
     // domain/subdomain sit on sbg-members' DomainIndex GSI, which throws a
     // ValidationException if the key is ever set to null/empty instead of
     // being omitted — so a cleared domain/subdomain must REMOVE, not SET.

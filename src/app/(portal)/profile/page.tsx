@@ -42,8 +42,8 @@ export default async function ProfilePage() {
             <Avatar className="h-16 w-16">
               <AvatarFallback className="text-lg font-bold">{initials}</AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-slate-100">{user.name}</h2>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-bold text-slate-100 truncate">{user.name}</h2>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Badge className={getRoleColor(user.role)}>{formatRole(user.role, user.domain)}</Badge>
                 {user.domain && user.role !== 'DIRECTOR' && <Badge className={getDomainColor(user.domain)}>{user.domain}</Badge>}
@@ -55,7 +55,7 @@ export default async function ProfilePage() {
               </div>
             </div>
             {!presidium && (
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 <div className={`text-3xl font-bold ${getStarColor(member?.totalStars || 0)}`}>
                   {(member?.totalStars || 0) > 0 ? '+' : ''}{member?.totalStars || 0}
                 </div>

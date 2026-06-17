@@ -5,6 +5,24 @@ import { logAction } from '@/lib/audit';
 import { canUseLinkShortener } from '@/lib/permissions';
 import { nanoid } from 'nanoid';
 
+// Blocks the link shortener from being used as an open redirect into internal
+// infrastructure (localhost, RFC1918 ranges, link-local incl. cloud metadata IPs).
+function isPrivateOrLocalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return true;
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const [a, b] = [parseInt(ipv4[1], 10), parseInt(ipv4[2], 10)];
+    if (a === 127 || a === 10 || a === 0) return true;
+    if (a === 169 && b === 254) return true; // link-local / cloud metadata (169.254.169.254)
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    return false;
+  }
+  if (host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80')) return true;
+  return false;
+}
+
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -37,6 +55,9 @@ export async function POST(req: NextRequest) {
     }
     if (!['http:', 'https:'].includes(parsed.protocol)) {
       return NextResponse.json({ error: 'Only http and https URLs are allowed' }, { status: 400 });
+    }
+    if (isPrivateOrLocalHost(parsed.hostname)) {
+      return NextResponse.json({ error: 'URLs pointing to internal/private addresses are not allowed' }, { status: 400 });
     }
 
     const trimmedCode = customCode?.trim();

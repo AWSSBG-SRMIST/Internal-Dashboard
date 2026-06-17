@@ -3,18 +3,32 @@ import { db, TABLE, QueryCommand, ScanCommand, UpdateCommand } from '@/lib/dynam
 import { logAction } from '@/lib/audit';
 import { sendTaskReminderEmail } from '@/lib/email';
 import type { SessionUser } from '@/types';
+import { timingSafeEqual } from 'crypto';
+
+// Loops over every due task and emails each pending member sequentially across
+// tasks — can run past Vercel's default function timeout once there are more
+// than a handful of pending reminders. Raises the cap to this route's plan
+// limit (Vercel silently clamps to whatever your plan allows).
+export const maxDuration = 60;
 
 const SYSTEM_ACTOR: SessionUser = {
   memberId: 'SYSTEM_CRON', name: 'System (Reminder Cron)', email: 'system@internal',
   role: 'SBG_LEADER', domain: null, subdomain: null,
 };
 
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false; // fail closed if no secret is configured
   const bearer = req.headers.get('authorization');
   const headerSecret = req.headers.get('x-cron-secret');
-  return bearer === `Bearer ${secret}` || headerSecret === secret;
+  return (!!bearer && safeEqual(bearer, `Bearer ${secret}`)) || (!!headerSecret && safeEqual(headerSecret, secret));
 }
 
 // Not every assignment type has an index to query — GENERAL/DOMAIN/SUBDOMAIN
