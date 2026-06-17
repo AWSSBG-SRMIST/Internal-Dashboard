@@ -27,8 +27,8 @@ const navItems: NavItem[] = [
   { label: 'Audit Logs', href: '/audit-logs', icon: <FileText size={18} />, roles: ['SBG_LEADER', 'SECRETARY'] },
 ];
 
-function NavPanel({ user, visibleItems, pathname, onNavigate }: {
-  user: SessionUser; visibleItems: NavItem[]; pathname: string; onNavigate: () => void;
+function NavPanel({ user, visibleItems, pathname, onNavigate, onLogout }: {
+  user: SessionUser; visibleItems: NavItem[]; pathname: string; onNavigate: () => void; onLogout: () => void;
 }) {
   return (
     <div className="flex flex-col h-full">
@@ -81,13 +81,13 @@ function NavPanel({ user, visibleItems, pathname, onNavigate }: {
             <p className="text-slate-400 text-xs truncate">{formatRole(user.role, user.domain)}</p>
           </div>
         </div>
-        <Link
-          href="/api/auth/logout"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all mt-1"
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all mt-1"
         >
           <LogOut size={16} />
           Sign out
-        </Link>
+        </button>
       </div>
     </div>
   );
@@ -107,6 +107,11 @@ export function Sidebar({ user, children }: SidebarProps) {
   );
   const closeMobile = () => setMobileOpen(false);
 
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
+  }
+
   return (
     <div className="flex h-dvh w-full bg-slate-950 overflow-hidden overscroll-none">
       {/* Mobile overlay */}
@@ -122,12 +127,12 @@ export function Sidebar({ user, children }: SidebarProps) {
         'lg:hidden fixed top-0 left-0 h-dvh w-72 bg-slate-900 z-50 transform transition-transform duration-300 shadow-2xl',
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
-        <NavPanel user={user} visibleItems={visibleItems} pathname={pathname} onNavigate={closeMobile} />
+        <NavPanel user={user} visibleItems={visibleItems} pathname={pathname} onNavigate={closeMobile} onLogout={handleLogout} />
       </aside>
 
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-slate-900 h-full flex-shrink-0">
-        <NavPanel user={user} visibleItems={visibleItems} pathname={pathname} onNavigate={closeMobile} />
+        <NavPanel user={user} visibleItems={visibleItems} pathname={pathname} onNavigate={closeMobile} onLogout={handleLogout} />
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
