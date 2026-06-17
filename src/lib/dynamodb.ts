@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand, ScanCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
 
 const client = new DynamoDBClient({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -24,4 +24,4 @@ export const TABLE = {
   AUDIT_LOGS: 'sbg-audit-logs',
 } as const;
 
-export { GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand, ScanCommand };
+export { GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand, ScanCommand, BatchWriteCommand };

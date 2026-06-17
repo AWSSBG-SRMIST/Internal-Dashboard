@@ -8,20 +8,19 @@ export async function logAction(
   targetType: string,
   targetId: string,
   details: string
-): Promise<void> {
-  await db.send(new PutCommand({
-    TableName: TABLE.AUDIT_LOGS,
-    Item: {
-      logId: randomUUID(),
-      action,
-      performedBy: actor.memberId,
-      performedByName: actor.name,
-      targetType,
-      targetId,
-      details,
-      timestamp: new Date().toISOString(),
-    },
-  }));
+): Promise<AuditLog> {
+  const item: AuditLog = {
+    logId: randomUUID(),
+    action,
+    performedBy: actor.memberId,
+    performedByName: actor.name,
+    targetType,
+    targetId,
+    details,
+    timestamp: new Date().toISOString(),
+  };
+  await db.send(new PutCommand({ TableName: TABLE.AUDIT_LOGS, Item: item }));
+  return item;
 }
 
 // Mirrors the default (no action/performedBy filter) branch of

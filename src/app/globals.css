@@ -22,15 +22,58 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  cursor: url('/cursors/default.png') 0 0, auto;
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* Custom hand cursor on anything clickable — covers links, buttons, Radix
+   Select triggers/options, checkboxes/radios, and the .cursor-pointer
+   utility used for non-semantic clickable cards (e.g. leaderboard podium). */
+a, button, label, select, .cursor-pointer,
+[role="button"], [role="option"], [role="combobox"], [role="menuitem"], [role="tab"],
+input[type="checkbox"], input[type="radio"], input[type="submit"], input[type="button"] {
+  cursor: url('/cursors/pointer.png') 5 0, pointer;
+}
+
+/* Text inputs keep the native text-beam cursor — the global custom cursor
+   above would otherwise cascade in and make text fields feel unclickable. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+textarea {
+  cursor: text;
+}
+
 /* Smooth momentum scrolling on iOS */
 .overflow-y-auto, .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
+}
+
+/* Custom scrollbar — slim, dark-themed, brightens to the brand orange on
+   hover. Applied globally so every scrollable container (sidebar nav,
+   tables, dialogs) matches without per-element opt-in. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #475569;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #FF9900;
 }
 
 .sidebar-link {

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db, TABLE, ScanCommand, QueryCommand } from '@/lib/dynamodb';
+import { db, TABLE, ScanCommand, QueryCommand, BatchWriteCommand } from '@/lib/dynamodb';
 import { isPresidium } from '@/lib/permissions';
+import { logAction } from '@/lib/audit';
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -47,5 +48,46 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Get audit logs error:', error);
     return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user || !isPresidium(user)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    // DynamoDB has no "delete all" — scan every key, then batch-delete in
+    // chunks of 25 (BatchWriteItem's per-request limit).
+    const keys: { logId: string }[] = [];
+    let lastKey: Record<string, any> | undefined;
+    do {
+      const result = await db.send(new ScanCommand({
+        TableName: TABLE.AUDIT_LOGS,
+        ProjectionExpression: 'logId',
+        ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
+      }));
+      keys.push(...((result.Items || []) as { logId: string }[]));
+      lastKey = result.LastEvaluatedKey as Record<string, any> | undefined;
+    } while (lastKey);
+
+    for (let i = 0; i < keys.length; i += 25) {
+      const batch = keys.slice(i, i + 25);
+      await db.send(new BatchWriteCommand({
+        RequestItems: {
+          [TABLE.AUDIT_LOGS]: batch.map(k => ({ DeleteRequest: { Key: { logId: k.logId } } })),
+        },
+      }));
+    }
+
+    // The clear action itself still gets logged — the one entry that
+    // survives, so there's a record of who wiped the log and when.
+    const entry = await logAction(user, 'CLEAR_AUDIT_LOGS', 'AUDIT_LOG', 'ALL', `Cleared ${keys.length} audit log entries`);
+
+    return NextResponse.json({ success: true, deleted: keys.length, data: entry });
+  } catch (error) {
+    console.error('Clear audit logs error:', error);
+    return NextResponse.json({ error: 'Failed to clear audit logs' }, { status: 500 });
   }
 }

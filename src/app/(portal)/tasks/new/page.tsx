@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, Loader2, Info } from 'lucide-react';
+import { ArrowLeft, Loader2, Info, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,10 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { DOMAIN_SUBDOMAINS } from '@/types';
 import { canAssignToMember, canAssignToScope } from '@/lib/permissions';
+import { formatDateTime } from '@/lib/utils';
 import Link from 'next/link';
 import type { Member, Domain, SessionUser } from '@/types';
 
 const ALL_DOMAINS: Domain[] = ['Technical', 'Corporate', 'Creatives'];
+const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+const MINUTES = ['00', '15', '30', '45'];
 
 // MANAGER and ASSOCIATE only ever have one domain+subdomain, so for them
 // "Subdomain-wide" isn't a choice — it's just "everyone in my subdomain".
@@ -49,6 +52,34 @@ export default function NewTaskPage() {
     domain: '',
     subdomain: '',
   });
+
+  // Deadline is built from 4 separate controls (date, 12h hour, 15-min-step
+  // minute, AM/PM) and combined into form.deadline as a plain
+  // 'YYYY-MM-DDTHH:mm' string — the same shape the old datetime-local input
+  // produced, so every other place that does new Date(deadline) is unaffected.
+  const [deadlineDate, setDeadlineDate] = useState('');
+  const [deadlineHour, setDeadlineHour] = useState('12');
+  const [deadlineMinute, setDeadlineMinute] = useState('00');
+  const [deadlinePeriod, setDeadlinePeriod] = useState<'AM' | 'PM'>('PM');
+
+  useEffect(() => {
+    // Default the time controls to "now, rounded up to the next 15 minutes"
+    // so the picker doesn't start on an arbitrary placeholder time.
+    const now = new Date();
+    let minutes = Math.ceil(now.getMinutes() / 15) * 15;
+    let hours = now.getHours();
+    if (minutes === 60) { minutes = 0; hours = (hours + 1) % 24; }
+    setDeadlineMinute(String(minutes).padStart(2, '0'));
+    setDeadlinePeriod(hours >= 12 ? 'PM' : 'AM');
+    setDeadlineHour(String(hours % 12 === 0 ? 12 : hours % 12).padStart(2, '0'));
+  }, []);
+
+  useEffect(() => {
+    if (!deadlineDate) { setForm(f => ({ ...f, deadline: '' })); return; }
+    let h24 = parseInt(deadlineHour, 10) % 12;
+    if (deadlinePeriod === 'PM') h24 += 12;
+    setForm(f => ({ ...f, deadline: `${deadlineDate}T${String(h24).padStart(2, '0')}:${deadlineMinute}` }));
+  }, [deadlineDate, deadlineHour, deadlineMinute, deadlinePeriod]);
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.success) setMe(d.data); });
@@ -136,7 +167,7 @@ export default function NewTaskPage() {
 
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  const minDateTime = now.toISOString().slice(0, 16);
+  const minDate = now.toISOString().slice(0, 10);
 
   if (!me) {
     return (
@@ -193,15 +224,42 @@ export default function NewTaskPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="deadline">Deadline *</Label>
-              <Input
-                id="deadline"
-                type="datetime-local"
-                value={form.deadline}
-                onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))}
-                min={minDateTime}
-                required
-              />
+              <Label htmlFor="deadline-date">Deadline *</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="deadline-date"
+                  type="date"
+                  value={deadlineDate}
+                  onChange={e => setDeadlineDate(e.target.value)}
+                  min={minDate}
+                  className="flex-1 min-w-[150px] [color-scheme:dark]"
+                  required
+                />
+                <div className="flex items-center gap-1.5">
+                  <Select value={deadlineHour} onValueChange={setDeadlineHour}>
+                    <SelectTrigger className="w-[60px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>{HOURS.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <span className="text-slate-500 font-semibold">:</span>
+                  <Select value={deadlineMinute} onValueChange={setDeadlineMinute}>
+                    <SelectTrigger className="w-[60px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>{MINUTES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Select value={deadlinePeriod} onValueChange={v => setDeadlinePeriod(v as 'AM' | 'PM')}>
+                    <SelectTrigger className="w-[64px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AM">AM</SelectItem>
+                      <SelectItem value="PM">PM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {form.deadline && (
+                <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                  <CalendarClock size={12} className="flex-shrink-0" />
+                  Due {formatDateTime(form.deadline)}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Priority</Label>

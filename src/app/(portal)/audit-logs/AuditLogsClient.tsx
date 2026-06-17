@@ -1,9 +1,12 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { FileText, Search } from 'lucide-react';
+import { toast } from 'sonner';
+import { FileText, Search, Trash2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/usePagination';
 import { formatDateTime, timeAgo } from '@/lib/utils';
@@ -27,25 +30,53 @@ const ACTION_COLORS: Record<string, string> = {
   CREATE_COHORT: 'bg-teal-500/20 text-teal-300',
   SEED_MEMBERS: 'bg-indigo-500/20 text-indigo-300',
   SETUP_TABLES: 'bg-slate-700 text-slate-300',
+  CLEAR_AUDIT_LOGS: 'bg-red-500/20 text-red-300',
 };
 
 export default function AuditLogsClient({ initialLogs }: { initialLogs: AuditLog[] }) {
+  const [logs, setLogs] = useState<AuditLog[]>(initialLogs);
   const [search, setSearch] = useState('');
+  const [showClear, setShowClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
-  const filtered = useMemo(() => initialLogs.filter(l =>
+  const filtered = useMemo(() => logs.filter(l =>
     !search ||
     l.action.toLowerCase().includes(search.toLowerCase()) ||
     l.performedByName.toLowerCase().includes(search.toLowerCase()) ||
     l.details.toLowerCase().includes(search.toLowerCase())
-  ), [initialLogs, search]);
+  ), [logs, search]);
 
   const { page, setPage, totalPages, paginatedItems } = usePagination(filtered, PAGE_SIZE);
 
+  async function clearLogs() {
+    setClearing(true);
+    try {
+      const res = await fetch('/api/audit-logs', { method: 'DELETE' });
+      const data = await res.json();
+      if (!data.success) throw new Error();
+      setLogs(data.data ? [data.data] : []);
+      setSearch('');
+      toast.success(`Cleared ${data.deleted} log entries`);
+      setShowClear(false);
+    } catch {
+      toast.error('Failed to clear audit logs');
+    } finally {
+      setClearing(false);
+    }
+  }
+
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100">Audit Logs</h1>
-        <p className="text-sm text-slate-400 mt-1">{initialLogs.length} logged actions</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100">Audit Logs</h1>
+          <p className="text-sm text-slate-400 mt-1">{logs.length} logged actions</p>
+        </div>
+        {logs.length > 0 && (
+          <Button variant="outline" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 flex-shrink-0" onClick={() => setShowClear(true)}>
+            <Trash2 size={14} /> Clear Logs
+          </Button>
+        )}
       </div>
 
       <div className="relative">
@@ -89,6 +120,17 @@ export default function AuditLogsClient({ initialLogs }: { initialLogs: AuditLog
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
+
+      <ConfirmDialog
+        open={showClear}
+        onOpenChange={setShowClear}
+        title="Clear all audit logs?"
+        description={`This permanently deletes all ${logs.length} logged actions. This cannot be undone.`}
+        confirmLabel="Clear Logs"
+        destructive
+        loading={clearing}
+        onConfirm={clearLogs}
+      />
     </div>
   );
 }
