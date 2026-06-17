@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { db, TABLE, GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@/lib/dynamodb';
 import { logAction } from '@/lib/audit';
 import { canSubmitTask } from '@/lib/permissions';
+import { incrementPendingCount } from '@/lib/ratings';
 import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
@@ -16,9 +17,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tas
     if (!task.Item) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     if (task.Item.status === 'CLOSED') return NextResponse.json({ error: 'Task is closed' }, { status: 400 });
 
-    // Validate the submitter is actually eligible for this task's assignment
-    // (INDIVIDUAL -> only the assignee, DOMAIN/SUBDOMAIN -> only matching scope,
-    // COHORT -> only cohort members, GENERAL -> everyone).
     let cohortMap = new Map<string, any>();
     if (task.Item.assignmentType === 'COHORT' && task.Item.assignedToId) {
       const cohortResult = await db.send(new GetCommand({ TableName: TABLE.COHORTS, Key: { cohortId: task.Item.assignedToId } }));
@@ -28,24 +26,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tas
       return NextResponse.json({ error: 'You are not eligible to submit to this task' }, { status: 403 });
     }
 
-    // Check if already submitted
-    const existing = await db.send(new QueryCommand({
-      TableName: TABLE.SUBMISSIONS,
-      IndexName: 'MemberIndex',
-      KeyConditionExpression: 'memberId = :mid',
-      FilterExpression: 'taskId = :tid',
-      ExpressionAttributeValues: { ':mid': user.memberId, ':tid': taskId },
-    }));
-    if (existing.Items && existing.Items.length > 0) {
-      return NextResponse.json({ error: 'You have already submitted for this task' }, { status: 409 });
-    }
+    // Paginate through all of the member's submissions to reliably detect duplicates
+    // (DynamoDB FilterExpression applies after the 1MB page limit, so a single
+    // query without pagination can miss submissions on subsequent pages).
+    let lastKey: Record<string, any> | undefined;
+    do {
+      const existing = await db.send(new QueryCommand({
+        TableName: TABLE.SUBMISSIONS,
+        IndexName: 'MemberIndex',
+        KeyConditionExpression: 'memberId = :mid',
+        FilterExpression: 'taskId = :tid',
+        ExpressionAttributeValues: { ':mid': user.memberId, ':tid': taskId },
+        ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
+      }));
+      if (existing.Items && existing.Items.length > 0) {
+        return NextResponse.json({ error: 'You have already submitted for this task' }, { status: 409 });
+      }
+      lastKey = existing.LastEvaluatedKey as Record<string, any> | undefined;
+    } while (lastKey);
 
     const { content, links } = await req.json();
     if (!content?.trim()) return NextResponse.json({ error: 'Content is required' }, { status: 400 });
 
-    // Validate links
     const validLinks = (links || []).filter((l: string) => {
-      try { new URL(l); return true; } catch { return false; }
+      try {
+        const p = new URL(l);
+        return p.protocol === 'https:' || p.protocol === 'http:';
+      } catch { return false; }
     });
 
     const submissionId = randomUUID();
@@ -70,7 +77,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tas
 
     await db.send(new PutCommand({ TableName: TABLE.SUBMISSIONS, Item: submission }));
 
-    // Increment task submission count
     await db.send(new UpdateCommand({
       TableName: TABLE.TASKS,
       Key: { taskId },
@@ -78,6 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tas
       ExpressionAttributeValues: { ':one': 1 },
     }));
 
+    await incrementPendingCount(user.memberId);
     await logAction(user, 'SUBMIT_TASK', 'SUBMISSION', submissionId, `Submitted task: ${task.Item.title}`);
 
     return NextResponse.json({ success: true, data: submission });

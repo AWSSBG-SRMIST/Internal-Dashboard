@@ -31,18 +31,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tas
       return NextResponse.json({ error: 'Already reviewed' }, { status: 409 });
     }
 
-    // Check permission
-    if (!canReviewSubmission(user, { memberId: submission.memberId, domain: submission.domain as Domain, subdomain: submission.subdomain as Subdomain })) {
+    if (!canReviewSubmission(user, {
+      memberId: submission.memberId,
+      domain: submission.domain as Domain,
+      subdomain: submission.subdomain as Subdomain,
+    })) {
       return NextResponse.json({ error: 'Not authorized to review this submission' }, { status: 403 });
     }
 
-    let ratingDelta = 0;
-    if (action === 'APPROVE') {
-      // Always use original submission timestamp for rating
-      ratingDelta = calculateRating(submission.submittedAt, submission.deadline);
-    } else {
-      ratingDelta = 0; // Rejected submissions get 0 (no rating change for reject, only approve/late)
-    }
+    const ratingDelta = action === 'APPROVE'
+      ? calculateRating(submission.submittedAt, submission.deadline)
+      : 0;
 
     const newStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
 
@@ -51,20 +50,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tas
       Key: { submissionId },
       UpdateExpression: 'SET reviewStatus = :s, reviewedBy = :rb, reviewedByName = :rbn, reviewedAt = :ra, ratingAwarded = :r',
       ExpressionAttributeValues: {
-        ':s': newStatus,
-        ':rb': user.memberId,
+        ':s':   newStatus,
+        ':rb':  user.memberId,
         ':rbn': user.name,
-        ':ra': new Date().toISOString(),
-        ':r': action === 'APPROVE' ? ratingDelta : null,
+        ':ra':  new Date().toISOString(),
+        ':r':   action === 'APPROVE' ? ratingDelta : null,
       },
     }));
 
-    if (action === 'APPROVE' && ratingDelta !== 0) {
-      await applyRating(submission.memberId, ratingDelta, 'APPROVED');
-    }
+    // Always call applyRating on review so pendingCount and review counters stay
+    // accurate for both approved and rejected submissions.
+    await applyRating(submission.memberId, ratingDelta, action);
 
-    await logAction(user, `${action}_SUBMISSION`, 'SUBMISSION', submissionId,
-      `${action} submission by ${submission.memberName} for task: ${task.title}. Rating: ${ratingDelta > 0 ? '+' : ''}${ratingDelta}`);
+    await logAction(
+      user,
+      `${action}_SUBMISSION`,
+      'SUBMISSION',
+      submissionId,
+      `${action} submission by ${submission.memberName} for task: ${task.title}. Rating: ${ratingDelta > 0 ? '+' : ''}${ratingDelta}`,
+    );
 
     return NextResponse.json({ success: true, ratingAwarded: ratingDelta });
   } catch (error) {

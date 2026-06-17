@@ -36,7 +36,7 @@ function TaskCard({ task }: { task: Task }) {
             <p className="text-xs text-slate-500">{task.totalSubmissions} submissions</p>
           </div>
         </div>
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mt-3 pt-3 border-t border-slate-800">
           <p className="text-xs text-slate-400">
             Assigned to: <span className="font-medium text-slate-300">{task.assignedToName}</span>
           </p>

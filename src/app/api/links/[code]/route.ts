@@ -5,6 +5,9 @@ import { logAction } from '@/lib/audit';
 import { isPresidium, canUseLinkShortener } from '@/lib/permissions';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { code } = await params;
   const result = await db.send(new GetCommand({ TableName: TABLE.LINKS, Key: { shortCode: code } }));
   if (!result.Item) return NextResponse.json({ error: 'Link not found' }, { status: 404 });

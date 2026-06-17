@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, TABLE, QueryCommand } from '@/lib/dynamodb';
-import { storeOTP } from '@/lib/auth';
+import { storeOTP, checkOTPResendCooldown } from '@/lib/auth';
 import { sendOTPEmail } from '@/lib/email';
 import { generateOTP } from '@/lib/utils';
 
@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Look up member by official email
     const result = await db.send(new QueryCommand({
       TableName: TABLE.MEMBERS,
       IndexName: 'EmailIndex',
@@ -28,6 +27,12 @@ export async function POST(req: NextRequest) {
     const member = result.Items[0];
     if (!member.isActive) {
       return NextResponse.json({ error: 'Account is inactive. Contact your administrator.' }, { status: 403 });
+    }
+
+    // Server-side resend cooldown — prevents email spam and DynamoDB cost abuse
+    const onCooldown = await checkOTPResendCooldown(normalizedEmail);
+    if (onCooldown) {
+      return NextResponse.json({ error: 'Please wait before requesting another OTP.' }, { status: 429 });
     }
 
     const otp = generateOTP();

@@ -62,7 +62,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
                 {member.domain && member.role !== 'DIRECTOR' && <Badge className={getDomainColor(member.domain)}>{member.domain}</Badge>}
                 {member.subdomain && <Badge className={getSubdomainColor(member.subdomain)}>{member.subdomain}</Badge>}
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-2 text-slate-400">
                   <Mail size={14} className="text-slate-500" />
                   <a href={`mailto:${member.officialEmail}`} className="hover:text-orange-500 truncate">{member.officialEmail}</a>
@@ -126,9 +126,9 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
               { label: 'FA Phone', value: member.faPhone },
               { label: 'Meetup', value: member.meetup },
             ].filter(i => i.value).map(item => (
-              <div key={item.label} className="flex justify-between py-2 border-b border-slate-800 last:border-0">
-                <span className="text-slate-400">{item.label}</span>
-                <span className="text-slate-100 font-medium">{item.value}</span>
+              <div key={item.label} className="flex items-baseline justify-between gap-4 py-2 border-b border-slate-800 last:border-0">
+                <span className="text-slate-400 flex-shrink-0">{item.label}</span>
+                <span className="text-slate-100 font-medium text-right break-all">{item.value}</span>
               </div>
             ))}
           </div>

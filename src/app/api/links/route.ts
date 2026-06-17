@@ -31,11 +31,20 @@ export async function POST(req: NextRequest) {
     const { originalUrl, description, customCode } = await req.json();
     if (!originalUrl) return NextResponse.json({ error: 'URL is required' }, { status: 400 });
 
-    try { new URL(originalUrl); } catch {
+    let parsed: URL;
+    try { parsed = new URL(originalUrl); } catch {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
     }
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return NextResponse.json({ error: 'Only http and https URLs are allowed' }, { status: 400 });
+    }
 
-    const shortCode = customCode?.trim() || nanoid(7);
+    const trimmedCode = customCode?.trim();
+    if (trimmedCode && !/^[a-zA-Z0-9-_]{1,50}$/.test(trimmedCode)) {
+      return NextResponse.json({ error: 'Custom code must be 1–50 alphanumeric characters, hyphens, or underscores' }, { status: 400 });
+    }
+
+    const shortCode = trimmedCode || nanoid(7);
     const link = {
       shortCode,
       originalUrl,

@@ -12,25 +12,29 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const isValid = await verifyOTP(normalizedEmail, otp.trim());
-    if (!isValid) {
-      return NextResponse.json({ error: 'Invalid or expired OTP' }, { status: 401 });
+    const result = await verifyOTP(normalizedEmail, otp.trim());
+    if (result === 'locked') {
+      return NextResponse.json({ error: 'Too many failed attempts. Request a new OTP.' }, { status: 429 });
+    }
+    if (result === 'expired') {
+      return NextResponse.json({ error: 'OTP has expired. Request a new one.' }, { status: 401 });
+    }
+    if (result === 'invalid') {
+      return NextResponse.json({ error: 'Invalid OTP' }, { status: 401 });
     }
 
-    // Get member details
-    const result = await db.send(new QueryCommand({
+    const memberResult = await db.send(new QueryCommand({
       TableName: TABLE.MEMBERS,
       IndexName: 'EmailIndex',
       KeyConditionExpression: 'officialEmail = :email',
       ExpressionAttributeValues: { ':email': normalizedEmail },
     }));
 
-    if (!result.Items || result.Items.length === 0) {
+    if (!memberResult.Items || memberResult.Items.length === 0) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    const member = result.Items[0];
-
+    const member = memberResult.Items[0];
     if (!member.isActive) {
       return NextResponse.json({ error: 'Account is inactive. Contact your administrator.' }, { status: 403 });
     }

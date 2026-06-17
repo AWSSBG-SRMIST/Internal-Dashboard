@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db, TABLE, ScanCommand, PutCommand } from '@/lib/dynamodb';
+import { db, TABLE, ScanCommand, PutCommand, QueryCommand } from '@/lib/dynamodb';
 import { logAction } from '@/lib/audit';
 import { isPresidium } from '@/lib/permissions';
 import { randomUUID } from 'crypto';
@@ -16,10 +16,15 @@ export async function GET(req: NextRequest) {
     const role = searchParams.get('role');
     const search = searchParams.get('search')?.toLowerCase();
 
+    const showAll = searchParams.get('all') === 'true' && isPresidium(user);
+
     const result = await db.send(new ScanCommand({ TableName: TABLE.MEMBERS }));
     let members = result.Items || [];
 
-    // Apply filters
+    // Inactive members are hidden from everyone except the presidium
+    // (who can pass ?all=true to see them for reactivation purposes).
+    if (!showAll) members = members.filter((m: any) => m.isActive !== false);
+
     if (domain) members = members.filter((m: any) => m.domain === domain);
     if (subdomain) members = members.filter((m: any) => m.subdomain === subdomain);
     if (role) members = members.filter((m: any) => m.role === role);
@@ -47,6 +52,20 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    const email = (body.officialEmail || '').toLowerCase();
+    if (!email) return NextResponse.json({ error: 'officialEmail is required' }, { status: 400 });
+
+    const emailCheck = await db.send(new QueryCommand({
+      TableName: TABLE.MEMBERS,
+      IndexName: 'EmailIndex',
+      KeyConditionExpression: 'officialEmail = :email',
+      ExpressionAttributeValues: { ':email': email },
+      Limit: 1,
+    }));
+    if (emailCheck.Items && emailCheck.Items.length > 0) {
+      return NextResponse.json({ error: 'A member with that email already exists' }, { status: 409 });
+    }
+
     const memberId = randomUUID();
     const member = {
       memberId,
@@ -58,7 +77,7 @@ export async function POST(req: NextRequest) {
       role: body.role || 'BUILDER',
       domain: body.domain || undefined,
       subdomain: body.subdomain || undefined,
-      officialEmail: (body.officialEmail || '').toLowerCase(),
+      officialEmail: email,
       personalEmail: body.personalEmail || '',
       phone: body.phone || '',
       whatsapp: body.whatsapp || '',

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { db, TABLE, PutCommand } from './dynamodb';
 import type { SessionUser } from '@/types';
 
@@ -8,7 +9,6 @@ export async function logAction(
   targetId: string,
   details: string
 ): Promise<void> {
-  const { randomUUID } = await import('crypto');
   await db.send(new PutCommand({
     TableName: TABLE.AUDIT_LOGS,
     Item: {

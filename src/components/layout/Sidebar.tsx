@@ -120,9 +120,9 @@ export function Sidebar({ user }: SidebarProps) {
         />
       )}
 
-      {/* Mobile sidebar */}
+      {/* Mobile sidebar — sits at z-40 (below the z-50 toggle button) */}
       <aside className={cn(
-        'lg:hidden fixed top-0 left-0 h-full w-64 bg-slate-900 z-40 transform transition-transform duration-300',
+        'lg:hidden fixed top-0 left-0 h-full w-72 bg-slate-900 z-40 transform transition-transform duration-300 shadow-2xl',
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <SidebarContent />

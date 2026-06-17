@@ -23,6 +23,7 @@ interface TaskDetailData {
   canReview: boolean;
   canSubmit: boolean;
   canDelete: boolean;
+  canClose: boolean;
 }
 
 export default function TaskDetailPage({ params }: { params: Promise<{ taskId: string }> }) {
@@ -117,48 +118,57 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
   );
   if (!data) return null;
 
-  const { task, submissions, mySubmission, canReview, canSubmit, canDelete } = data;
+  const { task, submissions, mySubmission, canReview, canSubmit, canDelete, canClose } = data;
   const overdue = isDeadlinePassed(task.deadline);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
         <Link href="/tasks">
-          <Button variant="ghost" size="icon" className="mt-1"><ArrowLeft size={18} /></Button>
+          <Button variant="ghost" size="icon" className="mt-1 flex-shrink-0"><ArrowLeft size={18} /></Button>
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap gap-2 mb-2">
-            <Badge variant={task.status === 'OPEN' ? (overdue ? 'destructive' : 'default') : 'secondary'}>
-              {task.status === 'OPEN' ? (overdue ? 'Overdue' : 'Open') : 'Closed'}
-            </Badge>
-            <Badge className={getAssignmentTypeColor(task.assignmentType)}>{task.assignmentType}</Badge>
-            {task.domain && <Badge className={getDomainColor(task.domain)}>{task.domain}</Badge>}
-            {task.subdomain && <Badge className={getSubdomainColor(task.subdomain)}>{task.subdomain}</Badge>}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap gap-2 mb-2">
+                <Badge variant={task.status === 'OPEN' ? (overdue ? 'destructive' : 'default') : 'secondary'}>
+                  {task.status === 'OPEN' ? (overdue ? 'Overdue' : 'Open') : 'Closed'}
+                </Badge>
+                <Badge className={getAssignmentTypeColor(task.assignmentType)}>{task.assignmentType}</Badge>
+                {task.domain && <Badge className={getDomainColor(task.domain)}>{task.domain}</Badge>}
+                {task.subdomain && <Badge className={getSubdomainColor(task.subdomain)}>{task.subdomain}</Badge>}
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-100">{task.title}</h1>
+              <div className="flex flex-wrap gap-3 sm:gap-4 mt-2 text-sm text-slate-400">
+                <span className="flex items-center gap-1">
+                  <User size={14} /> Created by {task.createdByName}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar size={14} /> {timeAgo(task.createdAt)}
+                </span>
+                <span className={`flex items-center gap-1 ${overdue ? 'text-red-400 font-medium' : ''}`}>
+                  <Clock size={14} /> Due: {formatDateTime(task.deadline)}
+                </span>
+              </div>
+            </div>
+            {(canClose && task.status === 'OPEN' || canDelete) && (
+              <div className="flex gap-2 flex-shrink-0">
+                {canClose && task.status === 'OPEN' && (
+                  <Button variant="outline" size="sm" onClick={closeTask}>
+                    <span className="hidden sm:inline">Close Task</span>
+                    <span className="sm:hidden">Close</span>
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="destructive" size="sm" onClick={deleteTask} disabled={deleting}>
+                    {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    <span className="hidden sm:inline">Delete</span>
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
-          <h1 className="text-2xl font-bold text-slate-100">{task.title}</h1>
-          <div className="flex flex-wrap gap-4 mt-2 text-sm text-slate-400">
-            <span className="flex items-center gap-1">
-              <User size={14} /> Created by {task.createdByName}
-            </span>
-            <span className="flex items-center gap-1">
-              <Calendar size={14} /> {timeAgo(task.createdAt)}
-            </span>
-            <span className={`flex items-center gap-1 ${overdue ? 'text-red-400 font-medium' : ''}`}>
-              <Clock size={14} /> Due: {formatDateTime(task.deadline)}
-            </span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {canReview && task.status === 'OPEN' && (
-            <Button variant="outline" size="sm" onClick={closeTask}>Close Task</Button>
-          )}
-          {canDelete && (
-            <Button variant="destructive" size="sm" onClick={deleteTask} disabled={deleting}>
-              {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-              Delete
-            </Button>
-          )}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { db, TABLE, GetCommand, PutCommand, UpdateCommand } from './dynamodb';
+import { db, TABLE, UpdateCommand } from './dynamodb';
 
 export function calculateRating(submittedAt: string, deadline: string): number {
   const sub = new Date(submittedAt).getTime();
@@ -6,60 +6,60 @@ export function calculateRating(submittedAt: string, deadline: string): number {
   const diffHours = (sub - dead) / (1000 * 60 * 60);
 
   if (diffHours < -24) return 3;   // >24h before deadline
-  if (diffHours <= 0) return 2;     // within last 24h before deadline
-  if (diffHours <= 24) return 1;    // within 24h after deadline
-  return -1;                         // more than 24h after deadline
+  if (diffHours <= 0) return 2;    // within last 24h before deadline
+  if (diffHours <= 24) return 1;   // within 24h after deadline
+  return -1;                        // more than 24h after deadline
 }
 
-export async function applyRating(memberId: string, ratingDelta: number, context: 'APPROVED' | 'REJECTED' | 'LATE'): Promise<void> {
-  const existing = await db.send(new GetCommand({
+// Atomically records a review outcome in the ratings table.
+// Uses if_not_exists throughout so the record is created on the first call
+// without a separate read-then-write, eliminating the TOCTOU race.
+export async function applyRating(
+  memberId: string,
+  ratingDelta: number,
+  action: 'APPROVE' | 'REJECT',
+): Promise<void> {
+  // Submitted after the deadline (ratingDelta 1 or -1) → lateApproved bucket
+  const isLateApproval = action === 'APPROVE' && ratingDelta < 2;
+
+  await db.send(new UpdateCommand({
     TableName: TABLE.RATINGS,
     Key: { memberId },
+    UpdateExpression: `SET
+      totalStars         = if_not_exists(totalStars, :zero)         + :delta,
+      approvedCount      = if_not_exists(approvedCount, :zero)      + :appInc,
+      lateApprovedCount  = if_not_exists(lateApprovedCount, :zero)  + :lateInc,
+      rejectedCount      = if_not_exists(rejectedCount, :zero)      + :rejInc,
+      pendingCount       = if_not_exists(pendingCount, :one)        - :one,
+      lastUpdated        = :ts`,
+    ExpressionAttributeValues: {
+      ':zero':    0,
+      ':one':     1,
+      ':delta':   ratingDelta,
+      ':appInc':  action === 'APPROVE' && !isLateApproval ? 1 : 0,
+      ':lateInc': isLateApproval ? 1 : 0,
+      ':rejInc':  action === 'REJECT' ? 1 : 0,
+      ':ts':      new Date().toISOString(),
+    },
   }));
 
-  if (!existing.Item) {
-    await db.send(new PutCommand({
-      TableName: TABLE.RATINGS,
-      Item: {
-        memberId,
-        totalStars: ratingDelta,
-        approvedCount: context === 'APPROVED' ? 1 : 0,
-        rejectedCount: context === 'REJECTED' ? 1 : 0,
-        pendingCount: 0,
-        lastUpdated: new Date().toISOString(),
-      },
-    }));
-  } else {
-    const updateExpr: string[] = ['#ts = #ts + :delta', 'lastUpdated = :ts'];
-    const exprAttrNames: Record<string, string> = { '#ts': 'totalStars' };
-    const exprAttrValues: Record<string, unknown> = {
-      ':delta': ratingDelta,
-      ':ts': new Date().toISOString(),
-    };
-
-    if (context === 'APPROVED') {
-      updateExpr.push('approvedCount = approvedCount + :one');
-      exprAttrValues[':one'] = 1;
-    } else if (context === 'REJECTED') {
-      updateExpr.push('rejectedCount = rejectedCount + :one');
-      exprAttrValues[':one'] = 1;
-    }
-
+  if (ratingDelta !== 0) {
     await db.send(new UpdateCommand({
-      TableName: TABLE.RATINGS,
+      TableName: TABLE.MEMBERS,
       Key: { memberId },
-      UpdateExpression: `SET ${updateExpr.join(', ')}`,
-      ExpressionAttributeNames: exprAttrNames,
-      ExpressionAttributeValues: exprAttrValues,
+      UpdateExpression: 'SET totalStars = totalStars + :delta',
+      ExpressionAttributeValues: { ':delta': ratingDelta },
     }));
   }
+}
 
-  // Also update member's totalStars
+// Called from the submit route when a new submission is created.
+export async function incrementPendingCount(memberId: string): Promise<void> {
   await db.send(new UpdateCommand({
-    TableName: TABLE.MEMBERS,
+    TableName: TABLE.RATINGS,
     Key: { memberId },
-    UpdateExpression: 'SET totalStars = totalStars + :delta',
-    ExpressionAttributeValues: { ':delta': ratingDelta },
+    UpdateExpression: 'SET pendingCount = if_not_exists(pendingCount, :zero) + :one, lastUpdated = :ts',
+    ExpressionAttributeValues: { ':zero': 0, ':one': 1, ':ts': new Date().toISOString() },
   }));
 }
 

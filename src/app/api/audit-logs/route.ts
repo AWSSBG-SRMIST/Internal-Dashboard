@@ -15,8 +15,18 @@ export async function GET(req: NextRequest) {
     const action = searchParams.get('action');
     const performedBy = searchParams.get('performedBy');
 
-    const result = await db.send(new ScanCommand({ TableName: TABLE.AUDIT_LOGS }));
-    let logs = result.Items || [];
+    // Paginate through the full table — a single ScanCommand returns at most
+    // 1MB, so large audit log tables would be silently truncated without this.
+    let logs: any[] = [];
+    let lastKey: Record<string, any> | undefined;
+    do {
+      const result = await db.send(new ScanCommand({
+        TableName: TABLE.AUDIT_LOGS,
+        ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
+      }));
+      logs.push(...(result.Items || []));
+      lastKey = result.LastEvaluatedKey as Record<string, any> | undefined;
+    } while (lastKey);
 
     if (action) logs = logs.filter((l: any) => l.action === action);
     if (performedBy) logs = logs.filter((l: any) => l.performedBy === performedBy);

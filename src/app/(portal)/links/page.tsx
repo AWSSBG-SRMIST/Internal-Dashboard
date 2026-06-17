@@ -67,7 +67,14 @@ export default function LinksPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.error || 'Failed to create link'); return; }
+      if (!res.ok) {
+        if (res.status === 409) {
+          toast.error('That short code was just taken — try a different one.');
+        } else {
+          toast.error(data.error || 'Failed to create link');
+        }
+        return;
+      }
       toast.success('Short link created!');
       setShowCreate(false);
       setForm({ originalUrl: '', description: '', customCode: '' });

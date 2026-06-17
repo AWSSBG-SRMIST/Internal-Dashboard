@@ -71,11 +71,11 @@ export default async function ProfilePage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Personal Details</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
-              {member.clubId && <div className="flex justify-between"><span className="text-slate-400">Club ID</span><span className="font-medium text-slate-200">{member.clubId}</span></div>}
-              {member.regNo && <div className="flex justify-between"><span className="text-slate-400">Reg. No.</span><span className="font-medium text-slate-200">{member.regNo}</span></div>}
-              {member.department && <div className="flex justify-between"><span className="text-slate-400">Department</span><span className="font-medium text-slate-200">{member.department}</span></div>}
-              {member.builderId && <div className="flex justify-between"><span className="text-slate-400">Builder ID</span><span className="font-medium text-slate-200">{member.builderId}</span></div>}
-              {member.joinedAt && <div className="flex justify-between"><span className="text-slate-400">Joined</span><span className="font-medium text-slate-200">{formatDate(member.joinedAt)}</span></div>}
+              {member.clubId && <div className="flex items-baseline justify-between gap-4"><span className="text-slate-400 flex-shrink-0">Club ID</span><span className="font-medium text-slate-200 text-right break-all">{member.clubId}</span></div>}
+              {member.regNo && <div className="flex items-baseline justify-between gap-4"><span className="text-slate-400 flex-shrink-0">Reg. No.</span><span className="font-medium text-slate-200 text-right">{member.regNo}</span></div>}
+              {member.department && <div className="flex items-baseline justify-between gap-4"><span className="text-slate-400 flex-shrink-0">Department</span><span className="font-medium text-slate-200 text-right">{member.department}</span></div>}
+              {member.builderId && <div className="flex items-baseline justify-between gap-4"><span className="text-slate-400 flex-shrink-0">Builder ID</span><span className="font-medium text-slate-200 text-right break-all">{member.builderId}</span></div>}
+              {member.joinedAt && <div className="flex items-baseline justify-between gap-4"><span className="text-slate-400 flex-shrink-0">Joined</span><span className="font-medium text-slate-200 text-right">{formatDate(member.joinedAt)}</span></div>}
             </CardContent>
           </Card>
 

@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       db.send(new ScanCommand({ TableName: TABLE.MEMBERS, ProjectionExpression: 'memberId, #d, subdomain', ExpressionAttributeNames: { '#d': 'domain' } })),
     ]);
 
-    const members = membersResult.Items || [];
+    const members = (membersResult.Items || []).filter((m: any) => m.isActive !== false);
     const cohorts = (cohortsResult.Items || []).filter((c: any) => canViewCohort(user, c));
 
     // Compute memberCount dynamically for SUBDOMAIN/GENERAL cohorts

@@ -23,7 +23,6 @@ export async function GET(req: NextRequest) {
     const cohorts = cohortsResult.Items || [];
     const cohortMap = new Map(cohorts.map((c: any) => [c.cohortId, c]));
 
-    // Filter visible tasks based on role
     tasks = tasks.filter((task: any) => isTaskVisible(user, task, cohortMap));
 
     if (status) tasks = tasks.filter((t: any) => t.status === status);
@@ -46,14 +45,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { title, description, deadline, assignmentType, assignedToId, assignedToName, domain, subdomain } = body;
+    const { title, description, deadline, assignmentType, assignedToId, domain, subdomain } = body;
 
     if (!title || !description || !deadline || !assignmentType) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Hierarchy/scope validation — canCreateTask only gates "is this person
-    // allowed to create tasks at all", not "who/what scope can they target".
+    // assignedToName is always derived server-side; never trusted from the client.
+    let resolvedAssignedToName = 'Everyone';
+
     if (assignmentType === 'INDIVIDUAL') {
       if (!assignedToId) return NextResponse.json({ error: 'Missing target member' }, { status: 400 });
       const targetResult = await db.send(new GetCommand({ TableName: TABLE.MEMBERS, Key: { memberId: assignedToId } }));
@@ -61,6 +61,15 @@ export async function POST(req: NextRequest) {
       if (!canAssignToMember(user, targetResult.Item as any)) {
         return NextResponse.json({ error: 'You are not allowed to assign tasks to this member' }, { status: 403 });
       }
+      resolvedAssignedToName = targetResult.Item.name;
+    } else if (assignmentType === 'COHORT') {
+      if (!assignedToId) return NextResponse.json({ error: 'Missing target cohort' }, { status: 400 });
+      const cohortResult = await db.send(new GetCommand({ TableName: TABLE.COHORTS, Key: { cohortId: assignedToId } }));
+      if (!cohortResult.Item) return NextResponse.json({ error: 'Target cohort not found' }, { status: 404 });
+      if (!canAssignToCohort(user, cohortResult.Item as any)) {
+        return NextResponse.json({ error: 'You are not allowed to assign tasks to this cohort' }, { status: 403 });
+      }
+      resolvedAssignedToName = cohortResult.Item.name;
     } else if (assignmentType === 'DOMAIN' || assignmentType === 'SUBDOMAIN') {
       if (!domain || (assignmentType === 'SUBDOMAIN' && !subdomain)) {
         return NextResponse.json({ error: 'Missing domain/subdomain' }, { status: 400 });
@@ -68,16 +77,10 @@ export async function POST(req: NextRequest) {
       if (!canAssignToScope(user, assignmentType, domain, subdomain)) {
         return NextResponse.json({ error: 'You are not allowed to assign tasks to this scope' }, { status: 403 });
       }
+      resolvedAssignedToName = assignmentType === 'SUBDOMAIN' ? subdomain : domain;
     } else if (assignmentType === 'GENERAL') {
       if (!canAssignToScope(user, 'GENERAL')) {
         return NextResponse.json({ error: 'Only the presidium can assign org-wide tasks' }, { status: 403 });
-      }
-    } else if (assignmentType === 'COHORT') {
-      if (!assignedToId) return NextResponse.json({ error: 'Missing target cohort' }, { status: 400 });
-      const cohortResult = await db.send(new GetCommand({ TableName: TABLE.COHORTS, Key: { cohortId: assignedToId } }));
-      if (!cohortResult.Item) return NextResponse.json({ error: 'Target cohort not found' }, { status: 404 });
-      if (!canAssignToCohort(user, cohortResult.Item as any)) {
-        return NextResponse.json({ error: 'You are not allowed to assign tasks to this cohort' }, { status: 403 });
       }
     }
 
@@ -89,7 +92,7 @@ export async function POST(req: NextRequest) {
       deadline,
       assignmentType,
       assignedToId: assignedToId || undefined,
-      assignedToName: assignedToName || 'Everyone',
+      assignedToName: resolvedAssignedToName,
       domain: domain || undefined,
       subdomain: subdomain || undefined,
       createdBy: user.memberId,

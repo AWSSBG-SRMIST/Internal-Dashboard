@@ -16,7 +16,8 @@ import type { Member } from '@/types';
 function MemberTable({ members, hideDomain, hideStars, hideSubdomain }: { members: Member[]; hideDomain?: boolean; hideStars?: boolean; hideSubdomain?: boolean }) {
   return (
     <div className="table-container">
-      <table className="w-full">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[480px]">
         <thead>
           <tr className="border-b border-slate-800">
             <th className="table-header text-left">Member</th>
@@ -80,6 +81,7 @@ function MemberTable({ members, hideDomain, hideStars, hideSubdomain }: { member
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

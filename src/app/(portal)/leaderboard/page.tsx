@@ -82,22 +82,23 @@ export default function LeaderboardPage() {
         <>
           {/* Podium */}
           {top3.length > 0 && (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
               {top3.map((member, idx) => (
                 <Link href={`/members/${member.memberId}`} key={member.memberId}>
                   <Card className={`border ${podiumBgs[idx]} hover:border-slate-600 transition-all cursor-pointer text-center`}>
-                    <CardContent className="p-4">
-                      <div className="text-3xl mb-2">{medals[idx]}</div>
-                      <Avatar className="h-12 w-12 mx-auto mb-2">
-                        <AvatarFallback className="font-bold">
+                    <CardContent className="p-2 sm:p-4">
+                      <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{medals[idx]}</div>
+                      <Avatar className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-1 sm:mb-2">
+                        <AvatarFallback className="text-xs sm:font-bold">
                           {member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
-                      <p className="font-semibold text-slate-100 text-sm truncate">{member.name}</p>
-                      <Badge className={`${getRoleColor(member.role)} mt-1 text-xs`} variant="secondary">
-                        {formatRole(member.role, member.domain)}
+                      <p className="font-semibold text-slate-100 text-xs sm:text-sm truncate">{member.name}</p>
+                      <Badge className={`${getRoleColor(member.role)} mt-1 text-[10px] sm:text-xs`} variant="secondary">
+                        <span className="hidden sm:inline">{formatRole(member.role, member.domain)}</span>
+                        <span className="sm:hidden">{member.role.replace('_', ' ')}</span>
                       </Badge>
-                      <div className={`text-2xl font-bold mt-2 ${podiumColors[idx]}`}>
+                      <div className={`text-base sm:text-2xl font-bold mt-1 sm:mt-2 ${podiumColors[idx]}`}>
                         {member.totalStars > 0 ? '+' : ''}{member.totalStars}⭐
                       </div>
                     </CardContent>
@@ -111,7 +112,8 @@ export default function LeaderboardPage() {
           {rest.length > 0 && (
             <Card>
               <CardContent className="p-0">
-                <table className="w-full">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[440px]">
                   <thead>
                     <tr className="border-b border-slate-800">
                       <th className="table-header text-left w-12">#</th>
@@ -154,6 +156,7 @@ export default function LeaderboardPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </CardContent>
             </Card>
           )}

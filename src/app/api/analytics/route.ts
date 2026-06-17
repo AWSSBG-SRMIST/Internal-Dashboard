@@ -47,14 +47,13 @@ export async function GET(req: NextRequest) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const recentTasks = tasks.filter((t: any) => new Date(t.createdAt) >= thirtyDaysAgo);
 
-    // Group by week
-    const weeklyTasks: Record<string, number> = {};
+    const dailyTasks: Record<string, number> = {};
     recentTasks.forEach((t: any) => {
-      const week = new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
-      weeklyTasks[week] = (weeklyTasks[week] || 0) + 1;
+      const day = new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+      dailyTasks[day] = (dailyTasks[day] || 0) + 1;
     });
 
-    const taskTrend = Object.entries(weeklyTasks)
+    const taskTrend = Object.entries(dailyTasks)
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(-10);
