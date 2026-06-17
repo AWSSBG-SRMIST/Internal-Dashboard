@@ -31,6 +31,7 @@ const ACTION_COLORS: Record<string, string> = {
   SEED_MEMBERS: 'bg-indigo-500/20 text-indigo-300',
   SETUP_TABLES: 'bg-slate-700 text-slate-300',
   CLEAR_AUDIT_LOGS: 'bg-red-500/20 text-red-300',
+  GENERATE_MOM: 'bg-violet-500/20 text-violet-300',
 };
 
 export default function AuditLogsClient({ initialLogs }: { initialLogs: AuditLog[] }) {

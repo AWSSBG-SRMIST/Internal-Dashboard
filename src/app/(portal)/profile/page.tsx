@@ -2,7 +2,6 @@ import { getCurrentUser } from '@/lib/auth';
 import { db, TABLE, GetCommand, QueryCommand } from '@/lib/dynamodb';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getRoleColor, getDomainColor, getSubdomainColor, getStarColor, formatDate, formatDateTime, formatRole } from '@/lib/utils';
 import { getSubmissionTimingLabel } from '@/lib/ratings';
 import { isPresidium } from '@/lib/permissions';
@@ -30,7 +29,6 @@ export default async function ProfilePage() {
   const member = (memberResult as any).Item;
   const rating = (ratingResult as any).Item;
   const recentSubs = (subsResult as any).Items || [];
-  const initials = user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
@@ -39,9 +37,6 @@ export default async function ProfilePage() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-lg font-bold">{initials}</AvatarFallback>
-            </Avatar>
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold text-slate-100 truncate">{user.name}</h2>
               <div className="flex flex-wrap gap-2 mt-2">

@@ -45,6 +45,23 @@ textarea {
   cursor: text;
 }
 
+/* Chrome/Edge/Safari/Brave all force a light yellow background + black text
+   on autofilled inputs, ignoring our own styling entirely. The only
+   reliable override is this inset box-shadow trick (paints over the
+   autofill highlight) plus -webkit-text-fill-color (the actual text color
+   property autofill respects, since `color` itself gets ignored). Matches
+   the input component's bg-slate-800 / text-slate-100. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f1f5f9;
+  caret-color: #f1f5f9;
+  box-shadow: 0 0 0px 1000px #1e293b inset;
+  -webkit-box-shadow: 0 0 0px 1000px #1e293b inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* Smooth momentum scrolling on iOS */
 .overflow-y-auto, .overflow-x-auto {
   -webkit-overflow-scrolling: touch;

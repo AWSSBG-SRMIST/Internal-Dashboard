@@ -4,7 +4,6 @@ import { Search, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/usePagination';
@@ -26,11 +25,6 @@ function MemberMobileCard({ member, hideDomain, hideStars, hideSubdomain, delay 
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10 flex-shrink-0">
-          <AvatarFallback className="text-xs">
-            {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-100 truncate">{member.name}</p>
           <p className="text-xs text-slate-500 truncate">{member.officialEmail}</p>
@@ -89,11 +83,6 @@ function MemberTable({ members, hideDomain, hideStars, hideSubdomain }: { member
             <tr key={member.memberId} className="table-row animate-fadeIn-row" style={{ animationDelay: `${Math.min(idx, 10) * 30}ms` }}>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9 flex-shrink-0">
-                    <AvatarFallback className="text-xs">
-                      {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-100 truncate">{member.name}</p>
                     <p className="text-xs text-slate-500 truncate">{member.officialEmail}</p>

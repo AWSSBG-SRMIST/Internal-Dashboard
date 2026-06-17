@@ -3,17 +3,12 @@ import { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getDomainColor, getSubdomainColor, getStarColor } from '@/lib/utils';
 import Link from 'next/link';
 import type { LeaderboardEntry } from '@/lib/leaderboard';
 import type { Domain } from '@/types';
 
 const DOMAINS: Domain[] = ['Technical', 'Corporate', 'Creatives'];
-
-function initialsOf(name: string) {
-  return name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-}
 
 function byStars(a: LeaderboardEntry, b: LeaderboardEntry) {
   return b.totalStars - a.totalStars;
@@ -33,9 +28,6 @@ function RoleTable({ roleLabel, members, showDomainColumn }: { roleLabel: string
             className="block rounded-xl border border-slate-800 bg-slate-900 p-3 active:bg-slate-800/60">
             <div className="flex items-center gap-3">
               <span className="text-sm text-slate-500 font-mono w-5 flex-shrink-0">{idx + 1}</span>
-              <Avatar className="h-8 w-8 flex-shrink-0">
-                <AvatarFallback className="text-xs">{initialsOf(m.name)}</AvatarFallback>
-              </Avatar>
               <span className="text-sm font-medium text-slate-100 truncate flex-1 min-w-0">{m.name}</span>
               <span className={`text-sm font-bold flex-shrink-0 ${getStarColor(m.totalStars)}`}>
                 {m.totalStars > 0 ? '+' : ''}{m.totalStars}⭐
@@ -72,9 +64,6 @@ function RoleTable({ roleLabel, members, showDomainColumn }: { roleLabel: string
                     <td className="px-4 py-3 text-sm text-slate-500 font-mono">{idx + 1}</td>
                     <td className="px-4 py-3">
                       <Link href={`/members/${m.memberId}`} className="flex items-center gap-2 hover:text-orange-500 min-w-0">
-                        <Avatar className="h-8 w-8 flex-shrink-0">
-                          <AvatarFallback className="text-xs">{initialsOf(m.name)}</AvatarFallback>
-                        </Avatar>
                         <span className="text-sm font-medium text-slate-100 truncate">{m.name}</span>
                       </Link>
                     </td>

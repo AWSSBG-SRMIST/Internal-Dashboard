@@ -94,23 +94,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="h-dvh overflow-y-auto bg-slate-950 flex items-center justify-center p-4">
+    <div className="h-dvh overflow-y-auto bg-slate-950 flex items-center justify-center p-4 relative">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-[-10%] left-[-5%] w-[28rem] h-[28rem] bg-orange-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '6s' }} />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[34rem] h-[34rem] bg-blue-500/10 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute top-1/3 right-1/4 w-72 h-72 bg-orange-400/5 rounded-full blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '48px 48px' }}
+        />
       </div>
 
-      <div className="w-full max-w-md relative">
+      <div className="w-full max-w-md relative animate-fadeIn">
         {/* Card */}
-        <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden">
+        <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-2xl shadow-orange-500/10 border border-slate-800 overflow-hidden relative">
+          <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-orange-500 via-orange-400 to-blue-500" />
+
           {/* Header */}
-          <div className="bg-slate-800 p-8 text-center border-b border-slate-700">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-900 border border-slate-700 mb-4 overflow-hidden">
-              <Image src="/logo.png" alt="AWSSBG" width={48} height={48} className="object-contain" />
+          <div className="p-8 pt-10 text-center border-b border-slate-800/80 relative overflow-hidden">
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-950 border border-slate-700 mb-4 overflow-hidden shadow-lg shadow-orange-500/10 ring-1 ring-orange-500/20 relative">
+              <Image src="/logo.png" alt="AWSSBG" width={56} height={56} className="object-contain" />
             </div>
-            <h1 className="text-xl font-bold text-white">Internal Dashboard</h1>
-            <p className="text-slate-400 text-sm mt-1">@AWSSBG · SRMIST</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Internal Dashboard</h1>
+            <p className="text-orange-400/80 text-xs font-medium tracking-wider uppercase mt-1.5">AWS Student Builder Group · SRMIST</p>
           </div>
 
           {/* Form */}

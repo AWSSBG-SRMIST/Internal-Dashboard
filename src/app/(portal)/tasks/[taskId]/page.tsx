@@ -359,9 +359,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
               }`}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="w-7 h-7 rounded-full bg-orange-500/20 flex items-center justify-center text-xs font-bold text-orange-400 flex-shrink-0">
-                      {sub.memberName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                    </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-100 truncate">{sub.memberName}</p>
                       <p className="text-xs text-slate-500 truncate">

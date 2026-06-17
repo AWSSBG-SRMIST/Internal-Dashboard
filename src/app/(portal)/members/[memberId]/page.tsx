@@ -6,7 +6,6 @@ import { ArrowLeft, Mail, Phone, Code2, Link2, Camera, Award, ExternalLink, Penc
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -129,7 +128,6 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
       </div>
       <Card>
         <CardContent className="p-6 flex items-start gap-4">
-          <Skeleton className="h-16 w-16 rounded-full flex-shrink-0" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-5 w-40" />
             <div className="flex gap-2"><Skeleton className="h-5 w-20" /><Skeleton className="h-5 w-20" /></div>
@@ -141,8 +139,6 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
     </div>
   );
   if (!member) return null;
-
-  const initials = member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const isSafeUrl = (url?: string | null) => !!url && /^https?:\/\//i.test(url);
   const editSubdomains = form.domain !== NONE ? (DOMAIN_SUBDOMAINS[form.domain as keyof typeof DOMAIN_SUBDOMAINS] || []) : [];
 
@@ -162,9 +158,6 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
       <Card>
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-lg font-bold">{initials}</AvatarFallback>
-            </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h2 className="text-xl font-bold text-slate-100">{member.name}</h2>

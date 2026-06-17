@@ -16,6 +16,16 @@ export function canEditMembers(actor: SessionUser): boolean {
   return actor.subdomain === 'HR & Admin' && (actor.role === 'MANAGER' || actor.role === 'ASSOCIATE');
 }
 
+// Minutes-of-Meeting generator: Presidium, any DIRECTOR/MANAGER/ASSOCIATE
+// (every domain — they all run meetings), plus HR & Admin's whole team
+// including BUILDERs (HRA is the one subdomain where builders sit in on
+// and need to write up meetings as part of the role itself).
+export function canGenerateMoM(actor: SessionUser): boolean {
+  if (isPresidium(actor)) return true;
+  if (actor.role === 'DIRECTOR' || actor.role === 'MANAGER' || actor.role === 'ASSOCIATE') return true;
+  return actor.subdomain === 'HR & Admin';
+}
+
 // Presidium has no domain affiliation at all; a DIRECTOR oversees a whole
 // domain, never a single subdomain within it. Centralized here so both the
 // create and update member routes reject the same bad combinations instead

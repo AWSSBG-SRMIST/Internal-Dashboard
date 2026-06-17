@@ -4,9 +4,10 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, CheckSquare, Users, Link2, Trophy, BarChart3,
-  FileText, LogOut, Menu, X
+  FileText, NotebookPen, LogOut, Menu, X
 } from 'lucide-react';
 import { cn, formatRole } from '@/lib/utils';
+import { canGenerateMoM } from '@/lib/permissions';
 import type { SessionUser } from '@/types';
 import { useState } from 'react';
 
@@ -15,6 +16,9 @@ interface NavItem {
   href: string;
   icon: React.ReactNode;
   roles?: string[];
+  // For access rules that aren't a flat role list (e.g. "any domain's
+  // Manager, plus HR & Admin's whole team"). Takes priority over `roles`.
+  visible?: (user: SessionUser) => boolean;
 }
 
 const navItems: NavItem[] = [
@@ -22,6 +26,7 @@ const navItems: NavItem[] = [
   { label: 'Tasks', href: '/tasks', icon: <CheckSquare size={18} /> },
   { label: 'Members', href: '/members', icon: <Users size={18} /> },
   { label: 'Link Shortener', href: '/links', icon: <Link2 size={18} />, roles: ['SBG_LEADER', 'SECRETARY', 'DIRECTOR', 'MANAGER', 'ASSOCIATE'] },
+  { label: 'Minutes of Meeting', href: '/mom', icon: <NotebookPen size={18} />, visible: canGenerateMoM },
   { label: 'Leaderboard', href: '/leaderboard', icon: <Trophy size={18} /> },
   { label: 'Analytics', href: '/analytics', icon: <BarChart3 size={18} />, roles: ['SBG_LEADER', 'SECRETARY', 'DIRECTOR'] },
   { label: 'Audit Logs', href: '/audit-logs', icon: <FileText size={18} />, roles: ['SBG_LEADER', 'SECRETARY'] },
@@ -71,11 +76,6 @@ function NavPanel({ user, visibleItems, pathname, onNavigate, onLogout }: {
       {/* User */}
       <div className="p-3 border-t border-white/10">
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
-          <div className="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center flex-shrink-0">
-            <span className="text-orange-400 text-xs font-bold">
-              {user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-            </span>
-          </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-medium truncate">{user.name}</p>
             <p className="text-slate-400 text-xs truncate">{formatRole(user.role, user.domain)}</p>
@@ -103,7 +103,7 @@ export function Sidebar({ user, children }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const visibleItems = navItems.filter(item =>
-    !item.roles || item.roles.includes(user.role)
+    item.visible ? item.visible(user) : !item.roles || item.roles.includes(user.role)
   );
   const closeMobile = () => setMobileOpen(false);
 
