@@ -172,6 +172,7 @@ export async function POST(req: NextRequest) {
       subdomain: resolvedSubdomain,
       createdBy: user.memberId,
       createdByName: user.name,
+      createdByRole: user.role,
       createdAt: new Date().toISOString(),
       status: 'OPEN',
       submissionMode: resolvedMode,

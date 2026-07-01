@@ -59,22 +59,35 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    // DynamoDB has no "delete all" — scan every key, then batch-delete in
-    // chunks of 25 (BatchWriteItem's per-request limit).
-    const keys: { logId: string }[] = [];
+    const { searchParams } = new URL(req.url);
+    const olderThanDays = parseInt(searchParams.get('olderThanDays') || '0', 10);
+    const actionType = searchParams.get('actionType') || '';
+
+    const cutoff = olderThanDays > 0
+      ? new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
+    const allItems: { logId: string; timestamp: string; action: string }[] = [];
     let lastKey: Record<string, any> | undefined;
     do {
       const result = await db.send(new ScanCommand({
         TableName: TABLE.AUDIT_LOGS,
-        ProjectionExpression: 'logId',
+        ProjectionExpression: 'logId, #ts, #a',
+        ExpressionAttributeNames: { '#ts': 'timestamp', '#a': 'action' },
         ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
       }));
-      keys.push(...((result.Items || []) as { logId: string }[]));
+      allItems.push(...((result.Items || []) as { logId: string; timestamp: string; action: string }[]));
       lastKey = result.LastEvaluatedKey as Record<string, any> | undefined;
     } while (lastKey);
 
-    for (let i = 0; i < keys.length; i += 25) {
-      const batch = keys.slice(i, i + 25);
+    const toDelete = allItems.filter(item => {
+      const matchDate = !cutoff || item.timestamp < cutoff;
+      const matchAction = !actionType || item.action === actionType;
+      return matchDate && matchAction;
+    });
+
+    for (let i = 0; i < toDelete.length; i += 25) {
+      const batch = toDelete.slice(i, i + 25);
       await db.send(new BatchWriteCommand({
         RequestItems: {
           [TABLE.AUDIT_LOGS]: batch.map(k => ({ DeleteRequest: { Key: { logId: k.logId } } })),
@@ -82,11 +95,14 @@ export async function DELETE(req: NextRequest) {
       }));
     }
 
-    // The clear action itself still gets logged — the one entry that
-    // survives, so there's a record of who wiped the log and when.
-    const entry = await logAction(user, 'CLEAR_AUDIT_LOGS', 'AUDIT_LOG', 'ALL', `Cleared ${keys.length} audit log entries`);
+    const parts = [
+      cutoff ? `older than ${olderThanDays} days` : 'all time',
+      actionType ? `action: ${actionType}` : 'all actions',
+    ];
+    const entry = await logAction(user, 'CLEAR_AUDIT_LOGS', 'AUDIT_LOG', 'ALL',
+      `Deleted ${toDelete.length} audit log entries (${parts.join(', ')})`);
 
-    return NextResponse.json({ success: true, deleted: keys.length, data: entry });
+    return NextResponse.json({ success: true, deleted: toDelete.length, data: entry });
   } catch (error) {
     console.error('Clear audit logs error:', error);
     return NextResponse.json({ error: 'Failed to clear audit logs' }, { status: 500 });

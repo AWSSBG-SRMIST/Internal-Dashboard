@@ -47,6 +47,8 @@ export default function AuditLogsClient({ initialLogs }: { initialLogs: AuditLog
   const [targetFilter, setTargetFilter] = useState('ALL');
   const [showClear, setShowClear] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'30' | '60' | '90' | 'all'>('all');
+  const [deleteActionType, setDeleteActionType] = useState<string>('ALL');
 
   const filtered = useMemo(() => logs.filter(l => {
     const matchSearch = !search ||
@@ -62,20 +64,49 @@ export default function AuditLogsClient({ initialLogs }: { initialLogs: AuditLog
 
   const hasFilters = search || actionFilter !== 'ALL' || targetFilter !== 'ALL';
 
+  const deletePreviewCount = useMemo(() => {
+    const cutoff = deleteMode !== 'all'
+      ? new Date(Date.now() - parseInt(deleteMode) * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+    return logs.filter(l => {
+      const matchDate = !cutoff || l.timestamp < cutoff;
+      const matchAction = deleteActionType === 'ALL' || l.action === deleteActionType;
+      return matchDate && matchAction;
+    }).length;
+  }, [logs, deleteMode, deleteActionType]);
+
   async function clearLogs() {
     setClearing(true);
     try {
-      const res = await fetch('/api/audit-logs', { method: 'DELETE' });
+      const params = new URLSearchParams();
+      if (deleteMode !== 'all') params.set('olderThanDays', deleteMode);
+      if (deleteActionType !== 'ALL') params.set('actionType', deleteActionType);
+      const url = `/api/audit-logs${params.size ? `?${params}` : ''}`;
+
+      const res = await fetch(url, { method: 'DELETE' });
       const data = await res.json();
       if (!data.success) throw new Error();
-      setLogs(data.data ? [data.data] : []);
+
+      // Remove deleted entries from local state
+      const cutoff = deleteMode !== 'all'
+        ? new Date(Date.now() - parseInt(deleteMode) * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+      setLogs(prev => {
+        const remaining = prev.filter(l => {
+          const matchDate = !cutoff || l.timestamp < cutoff;
+          const matchAction = deleteActionType === 'ALL' || l.action === deleteActionType;
+          return !(matchDate && matchAction);
+        });
+        return data.data ? [data.data, ...remaining] : remaining;
+      });
+
       setSearch('');
       setActionFilter('ALL');
       setTargetFilter('ALL');
-      toast.success(`Cleared ${data.deleted} log entries`);
+      toast.success(`Deleted ${data.deleted} log entries`);
       setShowClear(false);
     } catch {
-      toast.error('Failed to clear audit logs');
+      toast.error('Failed to delete audit logs');
     } finally {
       setClearing(false);
     }
@@ -171,9 +202,43 @@ export default function AuditLogsClient({ initialLogs }: { initialLogs: AuditLog
       <ConfirmDialog
         open={showClear}
         onOpenChange={setShowClear}
-        title="Clear all audit logs?"
-        description={`This permanently deletes all ${logs.length} logged actions. This cannot be undone.`}
-        confirmLabel="Clear Logs"
+        title="Delete audit logs?"
+        description={
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <p className="text-xs font-bold text-[#aaa] uppercase tracking-wide">Date range</p>
+              <Select value={deleteMode} onValueChange={v => setDeleteMode(v as typeof deleteMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">Older than 30 days</SelectItem>
+                  <SelectItem value="60">Older than 60 days</SelectItem>
+                  <SelectItem value="90">Older than 90 days</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs font-bold text-[#aaa] uppercase tracking-wide">Action type</p>
+              <Select value={deleteActionType} onValueChange={setDeleteActionType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All action types</SelectItem>
+                  {ALL_ACTIONS.map(a => (
+                    <SelectItem key={a} value={a}>{a.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className={`px-3 py-2.5 border-2 font-mono text-sm ${
+              deletePreviewCount === 0 ? 'border-[#2d2d2d] text-[#555]' : 'border-red-500/40 bg-red-500/5 text-red-300'
+            }`}>
+              {deletePreviewCount === 0
+                ? 'No logs match — nothing will be deleted.'
+                : <><span className="font-bold">{deletePreviewCount}</span> log {deletePreviewCount === 1 ? 'entry' : 'entries'} will be permanently deleted.</>}
+            </div>
+          </div>
+        }
+        confirmLabel="Delete"
         destructive
         loading={clearing}
         onConfirm={clearLogs}

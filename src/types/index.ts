@@ -87,6 +87,7 @@ export interface Task {
   subdomain: Subdomain | null;
   createdBy: string;
   createdByName: string;
+  createdByRole?: string;
   createdAt: string;
   status: 'OPEN' | 'CLOSED';
   submissionMode: SubmissionMode;

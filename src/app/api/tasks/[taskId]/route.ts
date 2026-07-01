@@ -63,7 +63,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
     const canDelete = isPresidium(user) || taskResult.Item.createdBy === user.memberId;
     const canClose = canReview || taskResult.Item.createdBy === user.memberId;
     const canEdit = taskResult.Item.createdBy === user.memberId || canReview;
-    const canDelegate = isPresidium(user) || taskResult.Item.createdBy === user.memberId;
+    const creatorIsPresidium = taskResult.Item.createdByRole === 'SBG_LEADER' || taskResult.Item.createdByRole === 'SECRETARY';
+    const canDelegate = isPresidium(user) && creatorIsPresidium;
 
     return NextResponse.json({
       success: true,
@@ -124,8 +125,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ task
     }
 
     if (delegatedReviewers !== undefined) {
-      if (!isCreator && !isPresidium(user)) {
-        return NextResponse.json({ error: 'Only the task creator can manage delegates' }, { status: 403 });
+      if (!isPresidium(user)) {
+        return NextResponse.json({ error: 'Only Presidium can manage delegates' }, { status: 403 });
       }
       if (!Array.isArray(delegatedReviewers) || delegatedReviewers.length > 2) {
         return NextResponse.json({ error: 'Maximum 2 delegates allowed' }, { status: 400 });
