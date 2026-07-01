@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Clock, Link2, Plus, X, Loader2,
-  Check, XCircle, Star, ExternalLink, Calendar, User, Trash2, Lock, Users
+  Check, XCircle, Star, ExternalLink, Calendar, User, Trash2, Lock, Users, Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDateTime, timeAgo, isDeadlinePassed, getAssignmentTypeColor, getAssignmentScopeLabel, getDomainColor, getSubdomainColor, getPriorityColor } from '@/lib/utils';
 import { getSubmissionTimingLabel } from '@/lib/ratings';
@@ -26,6 +29,7 @@ interface TaskDetailData {
   canSubmit: boolean;
   canDelete: boolean;
   canClose: boolean;
+  canEdit: boolean;
   collectiveLockedBy: { memberId: string; memberName: string } | null;
 }
 
@@ -44,6 +48,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM' });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetchTask(); }, [taskId]);
 
@@ -130,6 +137,39 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
     finally { setDeleting(false); }
   }
 
+  function openEdit() {
+    if (!data) return;
+    setEditForm({
+      title: data.task.title,
+      description: data.task.description,
+      deadline: data.task.deadline ? data.task.deadline.slice(0, 16) : '',
+      priority: data.task.priority || 'MEDIUM',
+    });
+    setShowEdit(true);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editForm.title.trim() || !editForm.description.trim() || !editForm.deadline) {
+      toast.error('Title, description and deadline are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      const d = await res.json();
+      if (!res.ok) { toast.error(d.error || 'Failed to update task'); return; }
+      toast.success('Task updated');
+      setShowEdit(false);
+      fetchTask();
+    } catch { toast.error('Failed to update task'); }
+    finally { setSaving(false); }
+  }
+
   if (loading) return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-start gap-3">
@@ -146,7 +186,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
   );
   if (!data) return null;
 
-  const { task, submissions, mySubmission, canReview, canSubmit, canDelete, canClose, collectiveLockedBy } = data;
+  const { task, submissions, mySubmission, canReview, canSubmit, canDelete, canClose, canEdit, collectiveLockedBy } = data;
   const overdue = isDeadlinePassed(task.deadline);
 
   return (
@@ -186,8 +226,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
                 </span>
               </div>
             </div>
-            {(canClose && task.status === 'OPEN' || canDelete) && (
+            {(canEdit || canClose && task.status === 'OPEN' || canDelete) && (
               <div className="flex gap-2 flex-shrink-0">
+                {canEdit && (
+                  <Button variant="outline" size="sm" onClick={openEdit}>
+                    <Pencil size={14} />
+                    <span className="hidden sm:inline">Edit</span>
+                  </Button>
+                )}
                 {canClose && task.status === 'OPEN' && (
                   <Button variant="outline" size="sm" onClick={() => setConfirmClose(true)}>
                     <span className="hidden sm:inline">Close Task</span>
@@ -500,6 +546,58 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
         loading={deleting}
         onConfirm={deleteTask}
       />
+
+      <Dialog open={showEdit} onOpenChange={setShowEdit}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
+          <form onSubmit={saveEdit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Title *</Label>
+              <Input
+                value={editForm.title}
+                onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description *</Label>
+              <Textarea
+                value={editForm.description}
+                onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                className="min-h-[120px]"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Deadline *</Label>
+              <Input
+                type="datetime-local"
+                value={editForm.deadline}
+                onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
+                className="[color-scheme:dark]"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Priority</Label>
+              <Select value={editForm.priority} onValueChange={v => setEditForm(f => ({ ...f, priority: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOW">Low</SelectItem>
+                  <SelectItem value="MEDIUM">Medium</SelectItem>
+                  <SelectItem value="HIGH">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowEdit(false)} disabled={saving}>Cancel</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

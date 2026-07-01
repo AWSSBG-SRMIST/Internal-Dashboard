@@ -57,6 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
       && canSubmitTask(user, taskResult.Item as any);
     const canDelete = isPresidium(user) || taskResult.Item.createdBy === user.memberId;
     const canClose = canReview || taskResult.Item.createdBy === user.memberId;
+    const canEdit = taskResult.Item.createdBy === user.memberId || canReview;
 
     return NextResponse.json({
       success: true,
@@ -68,6 +69,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
         canSubmit,
         canDelete,
         canClose,
+        canEdit,
         collectiveLockedBy,
       },
     });

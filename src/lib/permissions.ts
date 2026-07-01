@@ -116,6 +116,9 @@ export function getTaskRelationship(
     createdBy: string;
   },
 ): 'HIDDEN' | 'VISIBLE_ONLY' | 'CAN_SUBMIT' {
+  // Task creators can never submit to their own task
+  if (task.createdBy === user.memberId) return 'VISIBLE_ONLY';
+
   if (isPresidium(user)) return 'CAN_SUBMIT';
 
   const scope = task.assignmentType;

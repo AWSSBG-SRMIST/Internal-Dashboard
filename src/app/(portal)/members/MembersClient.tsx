@@ -108,7 +108,7 @@ function MemberTable({ members, hideDomain, hideStars, hideSubdomain }: { member
                   </span>
                 </td>
               )}
-              <td className="px-4 py-3 text-xs text-[#555] hidden lg:table-cell font-mono">{member.clubId}</td>
+              <td className="px-4 py-3 text-xs text-[#f0f0f0] hidden lg:table-cell font-mono">{member.clubId}</td>
               <td className="px-4 py-3 text-center">
                 <Link href={`/members/${member.memberId}`}>
                   <Button variant="ghost" size="sm" className="text-xs">View</Button>
