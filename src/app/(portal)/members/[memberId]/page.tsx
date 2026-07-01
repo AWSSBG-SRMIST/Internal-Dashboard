@@ -160,18 +160,18 @@ export default function MemberProfilePage({ params }: { params: Promise<{ member
                 <h2 className="text-xl font-bold text-[#f0f0f0] uppercase tracking-wide">{member.name}</h2>
                 {!member.isActive && <Badge variant="destructive">Inactive</Badge>}
               </div>
-              <div className="flex flex-wrap items-center gap-2 mb-3 text-xs text-[#888] font-mono uppercase">
+              <div className="flex flex-wrap items-center gap-2 mb-3 text-xs text-[#f0f0f0] font-mono uppercase">
                 <span>{formatRole(member.role, member.domain)}</span>
-                {member.domain && member.role !== 'DIRECTOR' && <><span className="text-[#333]">·</span><span>{member.domain}</span></>}
-                {member.subdomain && <><span className="text-[#333]">·</span><span>{member.subdomain}</span></>}
+                {member.domain && member.role !== 'DIRECTOR' && <><span className="text-[#555]">·</span><span>{member.domain}</span></>}
+                {member.subdomain && <><span className="text-[#555]">·</span><span>{member.subdomain}</span></>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2 text-[#888]">
+                <div className="flex items-center gap-2 text-[#f0f0f0]">
                   <Mail size={14} className="text-[#555]" />
                   <a href={`mailto:${member.officialEmail}`} className="hover:text-[#FF9900] truncate font-mono">{member.officialEmail}</a>
                 </div>
                 {member.phone && (
-                  <div className="flex items-center gap-2 text-[#888]">
+                  <div className="flex items-center gap-2 text-[#f0f0f0]">
                     <Phone size={14} className="text-[#555]" />
                     <span className="font-mono">{member.phone}</span>
                   </div>

@@ -1,9 +1,8 @@
 'use client';
 import { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { getDomainColor, getSubdomainColor, getStarColor } from '@/lib/utils';
+import { getStarColor } from '@/lib/utils';
 import Link from 'next/link';
 import type { LeaderboardEntry } from '@/lib/leaderboard';
 import type { Domain } from '@/types';
@@ -24,7 +23,7 @@ function RoleTable({ roleLabel, members, showDomainColumn }: { roleLabel: string
           <Link key={m.memberId} href={`/members/${m.memberId}`}
             className="block border-2 border-[#2d2d2d] bg-[#111] p-3 active:bg-[#1a1a1a] hover:border-[#FF9900] transition-colors">
             <div className="flex items-center gap-3">
-              <span className="text-sm text-[#555] font-mono w-5 flex-shrink-0">{idx + 1}</span>
+              <span className="text-sm text-[#f0f0f0] font-mono w-5 flex-shrink-0">{idx + 1}</span>
               <span className="text-sm font-bold text-[#f0f0f0] truncate flex-1 min-w-0 uppercase tracking-wide">{m.name}</span>
               <span className={`text-sm font-bold flex-shrink-0 font-mono ${getStarColor(m.totalStars)}`}>
                 {m.totalStars > 0 ? '+' : ''}{m.totalStars}⭐
@@ -32,8 +31,9 @@ function RoleTable({ roleLabel, members, showDomainColumn }: { roleLabel: string
             </div>
             {(showDomainColumn && m.domain || m.subdomain) && (
               <div className="flex items-center gap-1.5 mt-2 ml-8">
-                {showDomainColumn && m.domain && <Badge className={getDomainColor(m.domain)} variant="secondary">{m.domain}</Badge>}
-                {m.subdomain && <Badge className={getSubdomainColor(m.subdomain)} variant="secondary">{m.subdomain}</Badge>}
+                {showDomainColumn && m.domain && <span className="text-xs text-[#f0f0f0] font-mono">{m.domain}</span>}
+                {showDomainColumn && m.domain && m.subdomain && <span className="text-[#555]">·</span>}
+                {m.subdomain && <span className="text-xs text-[#f0f0f0] font-mono">{m.subdomain}</span>}
               </div>
             )}
           </Link>
@@ -58,7 +58,7 @@ function RoleTable({ roleLabel, members, showDomainColumn }: { roleLabel: string
               <tbody>
                 {members.map((m, idx) => (
                   <tr key={m.memberId} className="table-row">
-                    <td className="px-4 py-3 text-sm text-[#555] font-mono">{idx + 1}</td>
+                    <td className="px-4 py-3 text-sm text-[#f0f0f0] font-mono">{idx + 1}</td>
                     <td className="px-4 py-3">
                       <Link href={`/members/${m.memberId}`} className="flex items-center gap-2 hover:text-[#FF9900] min-w-0">
                         <span className="text-sm font-bold text-[#f0f0f0] truncate uppercase tracking-wide">{m.name}</span>
@@ -66,11 +66,11 @@ function RoleTable({ roleLabel, members, showDomainColumn }: { roleLabel: string
                     </td>
                     {showDomainColumn && (
                       <td className="px-4 py-3 hidden md:table-cell">
-                        {m.domain && <Badge className={getDomainColor(m.domain)} variant="secondary">{m.domain}</Badge>}
+                        <span className="text-xs text-[#f0f0f0] font-mono">{m.domain || '—'}</span>
                       </td>
                     )}
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      {m.subdomain && <Badge className={getSubdomainColor(m.subdomain)} variant="secondary">{m.subdomain}</Badge>}
+                      <span className="text-xs text-[#f0f0f0] font-mono">{m.subdomain || '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className={`text-sm font-bold font-mono ${getStarColor(m.totalStars)}`}>

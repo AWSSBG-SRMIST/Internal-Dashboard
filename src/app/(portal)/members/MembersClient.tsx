@@ -35,9 +35,9 @@ function MemberMobileCard({ member, hideDomain, hideStars, hideSubdomain, delay 
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-2">
-        <span className="text-xs text-[#888] font-mono uppercase">{formatRole(member.role, member.domain)}</span>
-        {!hideDomain && member.domain && <><span className="text-[#333]">·</span><span className="text-xs text-[#888] font-mono">{member.domain}</span></>}
-        {!hideSubdomain && member.subdomain && <><span className="text-[#333]">·</span><span className="text-xs text-[#888] font-mono">{member.subdomain}</span></>}
+        <span className="text-xs text-[#f0f0f0] font-mono uppercase">{formatRole(member.role, member.domain)}</span>
+        {!hideDomain && member.domain && <><span className="text-[#555]">·</span><span className="text-xs text-[#f0f0f0] font-mono">{member.domain}</span></>}
+        {!hideSubdomain && member.subdomain && <><span className="text-[#555]">·</span><span className="text-xs text-[#f0f0f0] font-mono">{member.subdomain}</span></>}
       </div>
     </Link>
   );
@@ -89,16 +89,16 @@ function MemberTable({ members, hideDomain, hideStars, hideSubdomain }: { member
                 </div>
               </td>
               <td className="px-4 py-3 hidden md:table-cell">
-                <span className="text-xs text-[#888] font-mono uppercase">{formatRole(member.role, member.domain)}</span>
+                <span className="text-xs text-[#f0f0f0] font-mono uppercase">{formatRole(member.role, member.domain)}</span>
               </td>
               {!hideDomain && (
                 <td className="px-4 py-3 hidden lg:table-cell">
-                  <span className="text-xs text-[#888] font-mono">{member.domain || '—'}</span>
+                  <span className="text-xs text-[#f0f0f0] font-mono">{member.domain || '—'}</span>
                 </td>
               )}
               {!hideSubdomain && (
                 <td className="px-4 py-3 hidden lg:table-cell">
-                  <span className="text-xs text-[#888] font-mono">{member.subdomain || '—'}</span>
+                  <span className="text-xs text-[#f0f0f0] font-mono">{member.subdomain || '—'}</span>
                 </td>
               )}
               {!hideStars && (
